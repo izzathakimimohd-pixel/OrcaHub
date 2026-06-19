@@ -662,7 +662,7 @@ function drawCatPick(){let list=CATALOG.slice();
   if(list.length>400)html+='<div style="padding:9px 13px;color:var(--grey);font-size:12px">… '+(list.length-400)+' lagi. Guna carian.</div>';
   document.getElementById('catList').innerHTML=html||'<div class="empty">Tiada item.</div>';}
 async function notifyMe(sku){
-  try{const r=await STORE.get('bp_v3_notify');var n=r?JSON.parse(r):{};}catch(e){var n={};}
+  let n={};try{const r=await STORE.get('bp_v3_notify');n=r?JSON.parse(r):{};}catch(e){}
   var key=session.clinic+'|'+sku;n[key]={clinic:session.clinic,sku:sku,by:session.name,date:today()};
   await STORE.set('bp_v3_notify',JSON.stringify(n));
   toast('🔔 Kami akan maklum bila '+skuInfo(sku).name+' ada stok');
