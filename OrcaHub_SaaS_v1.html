@@ -671,6 +671,7 @@ let GRNS=[];
 let B2C_CART={};
 let B2B_CART={};
 let NOTIFS=[];
+let BATCHES=[];
 
 // ===== LOAD / SEED DATA =====
 async function loadData(){
@@ -689,7 +690,9 @@ async function loadData(){
     B2C_CART=cart?JSON.parse(cart):{};
     const bcart=await STORE.get('oh_b2b_cart_'+SESSION?.username);
     B2B_CART=bcart?JSON.parse(bcart):{};
-  }catch(e){PRODUCTS=SEED_PRODUCTS.map(x=>({...x}));}
+    const batches=await STORE.get('oh_batches');
+    BATCHES=batches?JSON.parse(batches):seedBatches();
+  }catch(e){PRODUCTS=SEED_PRODUCTS.map(x=>({...x}));BATCHES=seedBatches();}
 }
 
 async function saveB2BOrders(){await STORE.set('oh_b2b_orders',JSON.stringify(B2B_ORDERS));}
@@ -699,6 +702,7 @@ async function saveGRNs(){await STORE.set('oh_grns',JSON.stringify(GRNS));}
 async function saveProducts(){await STORE.set('oh_products',JSON.stringify(PRODUCTS));}
 async function saveB2CCart(){await STORE.set('oh_b2c_cart_'+SESSION?.username,JSON.stringify(B2C_CART));}
 async function saveB2BCart(){await STORE.set('oh_b2b_cart_'+SESSION?.username,JSON.stringify(B2B_CART));}
+async function saveBatches(){await STORE.set('oh_batches',JSON.stringify(BATCHES));}
 
 function seedB2BOrders(){
   return [
@@ -730,6 +734,52 @@ function seedGRNs(){
   ];
 }
 
+function seedBatches(){
+  // Qty setiap produk mesti sama dengan p.stock (P001=240,P002=180,...P012=45)
+  return [
+    // P001 stock=240
+    {id:'BT-001',pid:'P001',batchNo:'LOT2026-A1',qty:80, qtyReceived:80, expiry:'2026-10-01',grnRef:'GRN-001',received:'2026-01-15'},
+    {id:'BT-002',pid:'P001',batchNo:'LOT2026-B1',qty:100,qtyReceived:100,expiry:'2027-03-15',grnRef:'GRN-001',received:'2026-03-01'},
+    {id:'BT-003',pid:'P001',batchNo:'LOT2026-C1',qty:60, qtyReceived:60, expiry:'2027-12-31',grnRef:'GRN-001',received:'2026-05-01'},
+    // P002 stock=180
+    {id:'BT-004',pid:'P002',batchNo:'LOT2026-A2',qty:55, qtyReceived:55, expiry:'2026-09-15',grnRef:'GRN-001',received:'2026-02-01'},
+    {id:'BT-005',pid:'P002',batchNo:'LOT2026-B2',qty:125,qtyReceived:125,expiry:'2027-06-30',grnRef:'GRN-001',received:'2026-04-01'},
+    // P003 stock=95
+    {id:'BT-006',pid:'P003',batchNo:'LOT2026-A3',qty:45, qtyReceived:45, expiry:'2026-09-01',grnRef:'GRN-001',received:'2026-03-10'},
+    {id:'BT-007',pid:'P003',batchNo:'LOT2026-B3',qty:50, qtyReceived:50, expiry:'2027-03-20',grnRef:'GRN-001',received:'2026-05-15'},
+    // P004 stock=320
+    {id:'BT-008',pid:'P004',batchNo:'LOT2026-A4',qty:80, qtyReceived:80, expiry:'2026-10-10',grnRef:'GRN-001',received:'2026-01-20'},
+    {id:'BT-009',pid:'P004',batchNo:'LOT2026-B4',qty:150,qtyReceived:150,expiry:'2027-01-01',grnRef:'GRN-001',received:'2026-03-20'},
+    {id:'BT-010',pid:'P004',batchNo:'LOT2026-C4',qty:90, qtyReceived:90, expiry:'2027-08-01',grnRef:'GRN-001',received:'2026-05-20'},
+    // P005 stock=150
+    {id:'BT-011',pid:'P005',batchNo:'LOT2026-A5',qty:60, qtyReceived:60, expiry:'2026-09-21',grnRef:'GRN-001',received:'2026-02-10'},
+    {id:'BT-012',pid:'P005',batchNo:'LOT2026-B5',qty:90, qtyReceived:90, expiry:'2027-04-30',grnRef:'GRN-001',received:'2026-04-10'},
+    // P006 stock=88
+    {id:'BT-013',pid:'P006',batchNo:'LOT2026-A6',qty:40, qtyReceived:40, expiry:'2026-08-01',grnRef:'GRN-001',received:'2026-01-05'},
+    {id:'BT-014',pid:'P006',batchNo:'LOT2026-B6',qty:48, qtyReceived:48, expiry:'2027-02-28',grnRef:'GRN-001',received:'2026-04-20'},
+    // P007 stock=200
+    {id:'BT-015',pid:'P007',batchNo:'LOT2026-A7',qty:60, qtyReceived:60, expiry:'2026-10-15',grnRef:'GRN-001',received:'2026-03-01'},
+    {id:'BT-016',pid:'P007',batchNo:'LOT2026-B7',qty:100,qtyReceived:100,expiry:'2027-01-15',grnRef:'GRN-001',received:'2026-04-01'},
+    {id:'BT-017',pid:'P007',batchNo:'LOT2026-C7',qty:40, qtyReceived:40, expiry:'2027-10-01',grnRef:'GRN-001',received:'2026-06-01'},
+    // P008 stock=75
+    {id:'BT-018',pid:'P008',batchNo:'LOT2026-A8',qty:35, qtyReceived:35, expiry:'2026-09-30',grnRef:'GRN-001',received:'2026-02-15'},
+    {id:'BT-019',pid:'P008',batchNo:'LOT2026-B8',qty:40, qtyReceived:40, expiry:'2027-06-15',grnRef:'GRN-001',received:'2026-05-01'},
+    // P009 stock=140
+    {id:'BT-020',pid:'P009',batchNo:'LOT2026-A9',qty:70, qtyReceived:70, expiry:'2026-11-01',grnRef:'GRN-001',received:'2026-03-05'},
+    {id:'BT-021',pid:'P009',batchNo:'LOT2026-B9',qty:70, qtyReceived:70, expiry:'2027-07-01',grnRef:'GRN-001',received:'2026-05-10'},
+    // P010 stock=220
+    {id:'BT-022',pid:'P010',batchNo:'LOT2026-A10',qty:24,qtyReceived:24, expiry:'2026-08-15',grnRef:'GRN-001',received:'2026-01-10'},
+    {id:'BT-023',pid:'P010',batchNo:'LOT2026-B10',qty:120,qtyReceived:120,expiry:'2027-01-31',grnRef:'GRN-001',received:'2026-04-05'},
+    {id:'BT-024',pid:'P010',batchNo:'LOT2026-C10',qty:76,qtyReceived:76, expiry:'2027-09-30',grnRef:'GRN-001',received:'2026-06-10'},
+    // P011 stock=60
+    {id:'BT-025',pid:'P011',batchNo:'LOT2026-A11',qty:30,qtyReceived:30, expiry:'2026-08-20',grnRef:'GRN-001',received:'2026-01-25'},
+    {id:'BT-026',pid:'P011',batchNo:'LOT2026-B11',qty:30,qtyReceived:30, expiry:'2027-05-15',grnRef:'GRN-001',received:'2026-04-15'},
+    // P012 stock=45
+    {id:'BT-027',pid:'P012',batchNo:'LOT2026-A12',qty:20,qtyReceived:20, expiry:'2026-09-10',grnRef:'GRN-001',received:'2026-02-20'},
+    {id:'BT-028',pid:'P012',batchNo:'LOT2026-B12',qty:25,qtyReceived:25, expiry:'2027-04-01',grnRef:'GRN-001',received:'2026-04-25'},
+  ];
+}
+
 // ===== UTILS =====
 function uid(p){return p+'-'+Date.now().toString().slice(-6)+Math.floor(Math.random()*9);}
 function today(){return new Date().toISOString().slice(0,10);}
@@ -740,6 +790,15 @@ function orderTotal(items){return (items||[]).reduce((s,i)=>s+(i.qty*i.price),0)
 function b2bPending(){return B2B_ORDERS.filter(o=>o.status==='new').length;}
 function b2cPending(){return B2C_ORDERS.filter(o=>o.status==='new').length;}
 function poPending(){return POS.filter(p=>p.status==='pending').length;}
+function getBatches(pid){return BATCHES.filter(b=>b.pid===pid&&b.qty>0).sort((a,b)=>a.expiry.localeCompare(b.expiry));}
+function totalStock(pid){return BATCHES.filter(b=>b.pid===pid).reduce((s,b)=>s+b.qty,0);}
+function allocateFEFO(pid,qty){
+  const sorted=getBatches(pid);let rem=qty;const alloc=[];
+  for(const b of sorted){if(rem<=0)break;const take=Math.min(b.qty,rem);alloc.push({batchId:b.id,batchNo:b.batchNo,expiry:b.expiry,take});rem-=take;}
+  return rem>0?null:alloc;
+}
+function daysToExpiry(dateStr){const d=new Date(dateStr);const now=new Date();now.setHours(0,0,0,0);return Math.floor((d-now)/(1000*60*60*24));}
+function expiryStatus(dateStr){const d=daysToExpiry(dateStr);if(d<0)return 'expired';if(d<90)return 'critical';if(d<180)return 'warning';return 'ok';}
 
 // ===== AUTH =====
 let _authRole='superadmin';
@@ -832,6 +891,7 @@ const SYNC_KEYS={
   oh_pos:        ['hq-po','sup-po','sup-dashboard','sup-delivery'],
   oh_grns:       ['hq-grn'],
   oh_products:   ['hq-catalog','b2b-order','b2c-store','sup-products'],
+  oh_batches:    ['hq-batches','hq-catalog','hq-dashboard'],
 };
 
 function initCrossTabSync(){
@@ -848,6 +908,7 @@ function initCrossTabSync(){
       if(e.key==='oh_pos'&&e.newValue)         POS=JSON.parse(e.newValue);
       if(e.key==='oh_grns'&&e.newValue)        GRNS=JSON.parse(e.newValue);
       if(e.key==='oh_products'&&e.newValue)    PRODUCTS=JSON.parse(e.newValue);
+      if(e.key==='oh_batches'&&e.newValue)     BATCHES=JSON.parse(e.newValue);
     }catch(err){}
 
     // If current page is affected, re-render it
@@ -940,6 +1001,7 @@ const MENUS={
     {sect:'B2B Procurement'},
     {id:'hq-b2b-orders',ic:'📋',label:'Order B2B',badge:'b2b'},
     {id:'hq-catalog',   ic:'📦',label:'Katalog Produk'},
+    {id:'hq-batches',   ic:'🗓️',label:'Batch & Expiry',badge:'expiry'},
     {id:'hq-suppliers', ic:'🚚',label:'Pembekal'},
     {id:'hq-po',        ic:'📄',label:'Purchase Orders',badge:'po'},
     {id:'hq-grn',       ic:'✅',label:'GRN'},
@@ -978,6 +1040,7 @@ function getBadgeCount(badge){
     if(SESSION?.role==='customer')return Object.keys(B2C_CART).length;
     if(SESSION?.role==='branch')return Object.keys(B2B_CART).length;
   }
+  if(badge==='expiry')return BATCHES.filter(b=>['expired','critical'].includes(expiryStatus(b.expiry))).length;
   return 0;
 }
 
@@ -1002,7 +1065,7 @@ function navTo(page){
   buildSidebar();
   renderPage();
   const labels={'sa-dashboard':'Dashboard','sa-tenants':'Tenants','sa-plans':'Subscription Plans','sa-analytics':'Analytics',
-    'hq-dashboard':'Dashboard','hq-b2b-orders':'Order B2B','hq-catalog':'Katalog','hq-suppliers':'Pembekal','hq-po':'Purchase Orders','hq-grn':'GRN','hq-b2c-orders':'Order B2C','hq-analytics':'Analitik',
+    'hq-dashboard':'Dashboard','hq-b2b-orders':'Order B2B','hq-catalog':'Katalog','hq-batches':'Batch & Expiry','hq-suppliers':'Pembekal','hq-po':'Purchase Orders','hq-grn':'GRN','hq-b2c-orders':'Order B2C','hq-analytics':'Analitik',
     'b2b-shop':'Dashboard','b2b-order':'Order Baru','b2b-myorders':'Order Saya',
     'b2c-store':'Kedai','b2c-cart':'Troli','b2c-orders':'Order Saya',
     'sup-dashboard':'Dashboard','sup-products':'Produk Saya','sup-po':'Incoming PO','sup-delivery':'Penghantaran',
@@ -1051,7 +1114,7 @@ function closeUserMenu(){document.getElementById('userMenu').style.display='none
 
 // ===== LOGOUT =====
 function logout(){
-  SESSION=null;B2B_ORDERS=[];B2C_ORDERS=[];POS=[];GRNS=[];PRODUCTS=[];
+  SESSION=null;B2B_ORDERS=[];B2C_ORDERS=[];POS=[];GRNS=[];PRODUCTS=[];BATCHES=[];
   B2C_CART={};B2B_CART={};NOTIFS=[];
   document.getElementById('app').style.display='none';
   document.getElementById('landing').style.display='block';
@@ -1092,6 +1155,7 @@ function renderPage(){
   else if(pg==='sa-analytics')c.innerHTML=pageSaAnalytics();
   else if(pg==='hq-dashboard')c.innerHTML=pageHqDashboard();
   else if(pg==='hq-b2b-orders')c.innerHTML=pageHqB2bOrders();
+  else if(pg==='hq-batches')  c.innerHTML=pageHqBatches();
   else if(pg==='hq-catalog')  c.innerHTML=pageHqCatalog();
   else if(pg==='hq-suppliers')c.innerHTML=pageHqSuppliers();
   else if(pg==='hq-po')       c.innerHTML=pageHqPO();
@@ -1304,6 +1368,7 @@ function pageHqDashboard(){
   const b2bRev=B2B_ORDERS.filter(o=>o.status==='done').reduce((s,o)=>s+orderTotal(o.items),0);
   const b2cRev=B2C_ORDERS.filter(o=>o.status==='done').reduce((s,o)=>s+orderTotal(o.items),0);
   const lowStock=PRODUCTS.filter(p=>p.stock<100).length;
+  const criticalBatches=BATCHES.filter(b=>['expired','critical'].includes(expiryStatus(b.expiry))).length;
   return `<div class="page-head"><h2>🏢 HQ Dashboard</h2><p>${SESSION.org} — Gambaran keseluruhan operasi</p></div>
 <div class="kpis">
   <div class="kpi kn"><div class="lbl">Order B2B Baru</div><div class="val">${b2bNew}</div><div class="sub">Menunggu lulus</div></div>
@@ -1314,6 +1379,10 @@ function pageHqDashboard(){
 ${lowStock>0?`<div style="background:var(--orange-l);border:1px solid var(--orange);border-radius:var(--radius);padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:12px">
   <span style="font-size:20px">⚠️</span>
   <div><strong>${lowStock} produk</strong> dengan stok rendah (< 100 unit). <a href="#" onclick="navTo('hq-catalog')">Semak katalog →</a></div>
+</div>`:''}
+${criticalBatches>0?`<div style="background:var(--red-l);border:1px solid var(--red);border-radius:var(--radius);padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:12px">
+  <span style="font-size:20px">🗓️</span>
+  <div><strong>${criticalBatches} batch</strong> kritikal atau luput tarikh. <a href="#" onclick="navTo('hq-batches')">Semak Batch & Expiry →</a></div>
 </div>`:''}
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
   <div class="card">
@@ -1341,10 +1410,63 @@ ${lowStock>0?`<div style="background:var(--orange-l);border:1px solid var(--oran
 </div>`;
 }
 
-function pageSaTenants(){return '<div class="empty-state"><div class="empty-icon">⏳</div><h4>Loading…</h4></div>';}
-function pageSaPlans(){return '<div class="empty-state"><div class="empty-icon">⏳</div><h4>Loading…</h4></div>';}
-function pageSaAnalytics(){return '<div class="empty-state"><div class="empty-icon">⏳</div><h4>Loading…</h4></div>';}
-function pageHqDashboard(){return '<div class="empty-state"><div class="empty-icon">⏳</div><h4>Loading…</h4></div>';}
+// ============================================================
+// ===== HQ BATCH & EXPIRY =====
+function pageHqBatches(){
+  let tab=window._batchTab||'all';
+  let rows=BATCHES.slice();
+  if(tab==='critical') rows=rows.filter(b=>['expired','critical'].includes(expiryStatus(b.expiry)));
+  else if(tab==='expired') rows=rows.filter(b=>expiryStatus(b.expiry)==='expired');
+  rows.sort((a,b)=>a.expiry.localeCompare(b.expiry));
+
+  const total=BATCHES.length;
+  const critical=BATCHES.filter(b=>expiryStatus(b.expiry)==='critical').length;
+  const expired=BATCHES.filter(b=>expiryStatus(b.expiry)==='expired').length;
+  const riskVal=BATCHES.filter(b=>['expired','critical'].includes(expiryStatus(b.expiry))).reduce((s,b)=>{
+    const p=PRODUCTS.find(x=>x.id===b.pid);return s+(p?p.b2bPrice*b.qty:0);},0);
+
+  const statusColorMap={expired:'var(--red)',critical:'var(--orange)',warning:'#92400e',ok:'var(--green)'};
+  const statusLabelMap={expired:'Luput',critical:'Kritikal',warning:'Amaran',ok:'OK'};
+
+  return `<div class="page-head"><h2>🗓️ Batch & Expiry</h2><p>Penjejakan batch FEFO — First Expired First Out</p></div>
+<div class="kpis">
+  <div class="kpi kn"><div class="lbl">Jumlah Batch</div><div class="val">${total}</div><div class="sub">Dalam sistem</div></div>
+  <div class="kpi ko"><div class="lbl">Batch Kritikal</div><div class="val">${critical}</div><div class="sub">< 90 hari</div></div>
+  <div class="kpi kr"><div class="lbl">Batch Luput</div><div class="val">${expired}</div><div class="sub">Perlu tindakan</div></div>
+  <div class="kpi kp"><div class="lbl">Nilai Stok Berisiko</div><div class="val">${fmtRM(riskVal)}</div><div class="sub">Kritikal + luput</div></div>
+</div>
+<div class="card">
+  <div class="card-h">
+    <h3>Senarai Batch</h3>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-sm ${tab==='all'?'btn-primary':'btn-ghost'}" onclick="window._batchTab='all';navTo('hq-batches')">Semua</button>
+      <button class="btn btn-sm ${tab==='critical'?'btn-primary':'btn-ghost'}" onclick="window._batchTab='critical';navTo('hq-batches')">Kritikal & Luput</button>
+      <button class="btn btn-sm ${tab==='expired'?'btn-primary':'btn-ghost'}" onclick="window._batchTab='expired';navTo('hq-batches')">Luput Sahaja</button>
+    </div>
+  </div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Produk</th><th>No. Batch</th><th>Qty Baki</th><th>Tarikh Luput</th><th>Hari Lagi</th><th>Status</th><th>GRN Ref</th></tr></thead>
+    <tbody>
+      ${rows.length?rows.map(b=>{
+        const p=PRODUCTS.find(x=>x.id===b.pid);
+        const st=expiryStatus(b.expiry);
+        const days=daysToExpiry(b.expiry);
+        const rowBg=st==='expired'?'background:var(--red-l)':st==='critical'?'background:var(--orange-l)':st==='warning'?'background:#fffbeb':'';
+        return`<tr style="${rowBg}">
+          <td><div style="display:flex;align-items:center;gap:6px"><span>${p?p.emoji:'📦'}</span><span style="font-weight:600">${p?p.name:b.pid}</span></div></td>
+          <td style="font-family:monospace;font-weight:600">${b.batchNo}</td>
+          <td><span class="pill ${b.qty<=0?'p-cancel':b.qty<50?'p-new':'p-done'}">${b.qty} unit</span></td>
+          <td style="font-weight:600">${b.expiry}</td>
+          <td style="color:${statusColorMap[st]};font-weight:700">${days<0?'Luput '+Math.abs(days)+'h':days+'h'}</td>
+          <td><span class="pill ${st==='expired'?'p-cancel':st==='critical'?'p-new':st==='warning'?'p-process':'p-done'}">${statusLabelMap[st]}</span></td>
+          <td style="font-size:12px;color:var(--grey)">${b.grnRef||'—'}</td>
+        </tr>`;
+      }).join(''):`<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">🗓️</div><h4>Tiada batch</h4></div></td></tr>`}
+    </tbody>
+  </table></div>
+</div>`;
+}
+
 // ============================================================
 // STEP 4: HQ B2B Orders, Catalog, Suppliers, PO, GRN
 // ============================================================
@@ -1412,11 +1534,65 @@ function viewB2bOrder(id){
 
 async function updateB2bStatus(id,status){
   const o=B2B_ORDERS.find(x=>x.id===id);if(!o)return;
-  o.status=status;
+  if(status==='process'){setTimeout(()=>showB2bFEFODialog(o),0);}
+  else if(status==='done'){await processB2bFEFO(o);}
+  else{
+    o.status=status;
+    await saveB2BOrders();
+    buildSidebar();
+    navTo('hq-b2b-orders');
+    toast(`✓ Order ${id} → ${status}`);
+  }
+}
+
+function showB2bFEFODialog(o){
+  const rows=o.items.map(i=>{
+    const pr=PRODUCTS.find(x=>x.id===i.pid);
+    const alloc=allocateFEFO(i.pid,i.qty);
+    if(!alloc)return`<tr style="background:var(--red-l)"><td>${pr?pr.name:i.pid}</td><td>${i.qty}</td><td colspan="2" style="color:var(--red)">⚠️ Stok batch tidak mencukupi</td></tr>`;
+    return alloc.map((a,idx)=>`<tr>
+      ${idx===0?`<td rowspan="${alloc.length}">${pr?pr.emoji+' '+pr.name:i.pid}</td><td rowspan="${alloc.length}">${i.qty}</td>`:''}
+      <td>${a.batchNo}</td><td style="color:${expiryStatus(a.expiry)==='expired'?'var(--red)':expiryStatus(a.expiry)==='critical'?'var(--orange)':'var(--green)'};">${a.expiry} (${daysToExpiry(a.expiry)}h) — ${a.take} unit</td>
+    </tr>`).join('');
+  }).join('');
+  openDlg(`<h3>📦 FEFO Allocation — ${o.id}</h3>
+<p style="color:var(--grey);margin-bottom:14px">Sistem akan mengambil stok mengikut tarikh luput terdekat.</p>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Produk</th><th>Qty Order</th><th>No. Batch</th><th>Expiry & Qty Ambil</th></tr></thead>
+  <tbody>${rows}</tbody>
+</table></div>
+<div class="dlg-footer">
+  <button class="btn btn-ghost" onclick="closeDlg()">Batal</button>
+  <button class="btn btn-primary" onclick="confirmB2bProcess('${o.id}')">Sahkan & Proses</button>
+</div>`,true);
+}
+
+async function confirmB2bProcess(id){
+  const o=B2B_ORDERS.find(x=>x.id===id);if(!o)return;
+  o.status='process';
   await saveB2BOrders();
+  closeDlg();
   buildSidebar();
   navTo('hq-b2b-orders');
-  toast(`✓ Order ${id} → ${status==='process'?'Diproses':'Selesai'}`);
+  toast(`✓ Order ${id} diproses`);
+}
+
+async function processB2bFEFO(o){
+  for(const i of o.items){
+    const alloc=allocateFEFO(i.pid,i.qty);
+    if(!alloc){toast('❌ Stok batch tidak mencukupi untuk '+i.pid);return;}
+    for(const a of alloc){
+      const b=BATCHES.find(x=>x.id===a.batchId);
+      if(b) b.qty-=a.take;
+    }
+    const p=PRODUCTS.find(x=>x.id===i.pid);
+    if(p) p.stock=totalStock(i.pid);
+  }
+  o.status='done';
+  await Promise.all([saveB2BOrders(),saveProducts(),saveBatches()]);
+  buildSidebar();
+  navTo('hq-b2b-orders');
+  toast(`✓ Order ${o.id} selesai — stok FEFO dikemaskini`);
 }
 
 function pageHqCatalog(){
@@ -1432,21 +1608,21 @@ function pageHqCatalog(){
     </div>
   </div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Produk</th><th>Kategori</th><th>Unit</th><th>Harga Supplier</th><th>Harga B2B</th><th>Harga B2C</th><th>Stok</th><th></th></tr></thead>
+    <thead><tr><th>Produk</th><th>Kategori</th><th>Unit</th><th>Harga Supplier</th><th>Harga B2B</th><th>Harga B2C</th><th>Stok (FEFO)</th><th></th></tr></thead>
     <tbody>
-      ${shown.map(p=>`<tr>
+      ${shown.map(p=>{const ds=BATCHES.some(b=>b.pid===p.id)?totalStock(p.id):p.stock;const nearBatch=getBatches(p.id)[0];const nearExColor=nearBatch?{expired:'var(--red)',critical:'var(--orange)',warning:'#92400e',ok:'var(--green)'}[expiryStatus(nearBatch.expiry)]:'';return`<tr>
         <td><div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px">${p.emoji}</span><div style="font-weight:600;font-size:13px">${p.name}</div></div></td>
         <td><span style="font-size:12px;color:var(--grey)">${p.cat}</span></td>
         <td>${p.unit}</td>
         <td>${fmtRM(p.supplierPrice)}</td>
         <td style="font-weight:600;color:var(--navy)">${fmtRM(p.b2bPrice)}</td>
         <td style="font-weight:600;color:var(--green)">${fmtRM(p.b2cPrice)}</td>
-        <td><span class="pill ${p.stock<=0?'p-cancel':p.stock<50?'p-new':'p-done'}">${p.stock} unit</span></td>
+        <td><span class="pill ${ds<=0?'p-cancel':ds<50?'p-new':'p-done'}">${ds} unit</span>${nearBatch?`<div style="font-size:11px;margin-top:3px;color:${nearExColor}">Luput: ${nearBatch.expiry}</div>`:''}</td>
         <td><div style="display:flex;gap:6px">
           <button class="btn btn-ghost btn-xs" onclick="editProduct('${p.id}')">Edit</button>
           <button class="btn btn-red btn-xs" onclick="delProduct('${p.id}')">Padam</button>
         </div></td>
-      </tr>`).join('')}
+      </tr>`}).join('')}
     </tbody>
   </table></div>
 </div>`;
@@ -1685,20 +1861,51 @@ ${hasFoc?`<div style="font-size:12px;color:var(--green);margin-top:10px;font-wei
 <div class="dlg-footer"><button class="btn btn-ghost" onclick="closeDlg()">Tutup</button></div>`,true);
 }
 
-async function createGRN(poId){
+function createGRN(poId){
   const po=POS.find(x=>x.id===poId);if(!po)return;
   if(GRNS.some(g=>g.poRef===poId)){toast('GRN untuk PO ini sudah wujud');return;}
+  const itemsHtml=po.items.map(i=>{
+    const pr=PRODUCTS.find(x=>x.id===i.pid);
+    return `<div style="background:var(--sand);border-radius:var(--radius-sm);padding:12px;margin-bottom:10px">
+      <div style="font-weight:600;margin-bottom:8px">${pr?pr.emoji+' '+pr.name:i.pid} — ${i.qty+(i.foc||0)} unit</div>
+      <div class="form-row">
+        <div class="fld"><label>No. Batch</label><input id="grn_batch_${i.pid}" placeholder="cth: BT-2026-001" value="BT-${new Date().getFullYear()}-${Math.floor(Math.random()*900+100)}"></div>
+        <div class="fld"><label>Tarikh Luput</label><input id="grn_expiry_${i.pid}" type="date" value="${new Date(Date.now()+365*24*60*60*1000).toISOString().slice(0,10)}"></div>
+      </div>
+    </div>`;
+  }).join('');
+  openDlg(`<h3>✅ Buat GRN — ${poId}</h3>
+<p style="color:var(--grey);margin-bottom:16px">Masukkan no. batch dan tarikh luput untuk setiap item.</p>
+${itemsHtml}
+<div class="dlg-footer">
+  <button class="btn btn-ghost" onclick="closeDlg()">Batal</button>
+  <button class="btn btn-primary" onclick="doCreateGRN('${poId}')">Sahkan GRN</button>
+</div>`,true);
+}
+
+async function doCreateGRN(poId){
+  const po=POS.find(x=>x.id===poId);if(!po)return;
+  for(const i of po.items){
+    const batchNo=document.getElementById('grn_batch_'+i.pid)?.value?.trim();
+    const expiry=document.getElementById('grn_expiry_'+i.pid)?.value;
+    if(!batchNo||!expiry){toast('❌ Sila isi no. batch dan tarikh luput untuk semua item');return;}
+  }
   const grn={id:uid('GRN'),poRef:poId,supplier:po.supplier,date:today(),items:po.items.map(i=>({...i})),receivedBy:SESSION.name};
   GRNS.push(grn);
-  // Stok = qty yang dibeli + FOC (kedua-dua masuk ke inventori)
   po.items.forEach(i=>{
+    const batchNo=document.getElementById('grn_batch_'+i.pid)?.value?.trim();
+    const expiry=document.getElementById('grn_expiry_'+i.pid)?.value;
+    const totalQty=i.qty+(i.foc||0);
+    const batch={id:uid('BTH'),pid:i.pid,batchNo,qty:totalQty,qtyReceived:totalQty,expiry,grnRef:grn.id,received:today()};
+    BATCHES.push(batch);
     const p=PRODUCTS.find(x=>x.id===i.pid);
-    if(p) p.stock += i.qty + (i.foc||0);
+    if(p) p.stock += totalQty;
   });
-  await Promise.all([saveGRNs(),saveProducts()]);
+  await Promise.all([saveGRNs(),saveProducts(),saveBatches()]);
+  closeDlg();
   navTo('hq-grn');
   const totalFoc=po.items.reduce((s,i)=>s+(i.foc||0),0);
-  toast(`✓ GRN ${grn.id} dibuat. Stok dikemaskini.${totalFoc>0?' (+'+totalFoc+' unit FOC termasuk)':''}`);
+  toast(`✓ GRN ${grn.id} dibuat. Stok & batch dikemaskini.${totalFoc>0?' (+'+totalFoc+' unit FOC termasuk)':''}`);
 }
 
 function pageHqGRN(){
