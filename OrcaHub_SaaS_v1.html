@@ -673,6 +673,8 @@ let B2B_CART={};
 let NOTIFS=[];
 let BATCHES=[];
 let SCANLOG=[];
+let SUPPLIERS=[];
+let CATEGORIES=[];
 
 // ===== LOAD / SEED DATA =====
 async function loadData(){
@@ -695,7 +697,11 @@ async function loadData(){
     BATCHES=batches?JSON.parse(batches):seedBatches();
     const scanlog=await STORE.get('oh_scanlog');
     SCANLOG=scanlog?JSON.parse(scanlog):[];
-  }catch(e){PRODUCTS=SEED_PRODUCTS.map(x=>({...x}));BATCHES=seedBatches();SCANLOG=[];}
+    const suppliers=await STORE.get('oh_suppliers');
+    SUPPLIERS=suppliers?JSON.parse(suppliers):seedSuppliers();
+    const categories=await STORE.get('oh_categories');
+    CATEGORIES=categories?JSON.parse(categories):seedCategories();
+  }catch(e){PRODUCTS=SEED_PRODUCTS.map(x=>({...x}));BATCHES=seedBatches();SCANLOG=[];SUPPLIERS=seedSuppliers();CATEGORIES=seedCategories();}
 }
 
 async function saveB2BOrders(){await STORE.set('oh_b2b_orders',JSON.stringify(B2B_ORDERS));}
@@ -707,6 +713,22 @@ async function saveB2CCart(){await STORE.set('oh_b2c_cart_'+SESSION?.username,JS
 async function saveB2BCart(){await STORE.set('oh_b2b_cart_'+SESSION?.username,JSON.stringify(B2B_CART));}
 async function saveBatches(){await STORE.set('oh_batches',JSON.stringify(BATCHES));}
 async function saveScanLog(){await STORE.set('oh_scanlog',JSON.stringify(SCANLOG));}
+async function saveSuppliers(){await STORE.set('oh_suppliers',JSON.stringify(SUPPLIERS));}
+async function saveCategories(){await STORE.set('oh_categories',JSON.stringify(CATEGORIES));}
+
+function seedSuppliers(){
+  return [
+    {id:'SUP001',name:'PharmaCo Supply Sdn Bhd',contact:'John Lim',phone:'03-7890 1234',email:'sales@pharmacosupply.com.my',address:'No 12, Jln Industri 2, Shah Alam, Selangor',terms:'Net 30',status:'active'},
+    {id:'SUP002',name:'MedTech Trading Sdn Bhd',contact:'Sarah Wong',phone:'03-5566 7788',email:'order@medtechtrading.com.my',address:'Lot 5, Kawasan Perindustrian Tebrau, Johor Bahru',terms:'Net 45',status:'active'},
+    {id:'SUP003',name:'Apex Pharma Distribution',contact:'Razif Ahmad',phone:'04-2233 4455',email:'supply@apexpharma.com.my',address:'No 88, Jln Perak, Georgetown, Pulau Pinang',terms:'Net 30',status:'active'},
+    {id:'SUP004',name:'Global Health Supply',contact:'Linda Tan',phone:'03-9988 7766',email:'info@globalhealthsupply.com',address:'Unit 3-5, Kompleks Perniagaan Sri Petaling, KL',terms:'Net 60',status:'active'},
+    {id:'SUP005',name:'Pioneer Medical Sdn Bhd',contact:'Michael Chen',phone:'03-6123 4567',email:'sales@pioneermedical.com.my',address:'No 22, Jln Teknologi 3, Kota Damansara, PJ',terms:'COD',status:'active'},
+  ];
+}
+
+function seedCategories(){
+  return ['Analgesik','Antibiotik','Batuk & Selsema','Alergi','Gastro','Vitamin','Mata & Telinga','Diabetes','Kardiologi','Household','Stationery','General Item','Medical Equipment','Medical Instrument','Consumables'];
+}
 async function logScan(action,code,pid,batchNo,result,ref){
   SCANLOG.push({id:uid('SCN'),ts:new Date().toISOString(),user:SESSION?.name||'',action,code,pid,batchNo,result,ref});
   await saveScanLog();
@@ -915,6 +937,8 @@ const SYNC_KEYS={
   oh_products:   ['hq-catalog','b2b-order','b2c-store','sup-products'],
   oh_batches:    ['hq-batches','hq-catalog','hq-dashboard'],
   oh_scanlog:    ['hq-scanlog'],
+  oh_suppliers:  ['hq-suppliers','hq-po'],
+  oh_categories: ['hq-catalog','settings'],
 };
 
 function initCrossTabSync(){
@@ -933,6 +957,8 @@ function initCrossTabSync(){
       if(e.key==='oh_products'&&e.newValue)    PRODUCTS=JSON.parse(e.newValue);
       if(e.key==='oh_batches'&&e.newValue)     BATCHES=JSON.parse(e.newValue);
       if(e.key==='oh_scanlog'&&e.newValue)     SCANLOG=JSON.parse(e.newValue);
+      if(e.key==='oh_suppliers'&&e.newValue)   SUPPLIERS=JSON.parse(e.newValue);
+      if(e.key==='oh_categories'&&e.newValue)  CATEGORIES=JSON.parse(e.newValue);
     }catch(err){}
 
     // If current page is affected, re-render it
@@ -1140,7 +1166,7 @@ function closeUserMenu(){document.getElementById('userMenu').style.display='none
 // ===== LOGOUT =====
 function logout(){
   SESSION=null;B2B_ORDERS=[];B2C_ORDERS=[];POS=[];GRNS=[];PRODUCTS=[];BATCHES=[];SCANLOG=[];
-  B2C_CART={};B2B_CART={};NOTIFS=[];
+  SUPPLIERS=[];CATEGORIES=[];B2C_CART={};B2B_CART={};NOTIFS=[];
   document.getElementById('app').style.display='none';
   document.getElementById('landing').style.display='block';
   document.getElementById('authUser').value='';
@@ -1766,13 +1792,13 @@ function pageHqCatalog(){
   <div class="card-h">
     <h3>Produk (${PRODUCTS.length})</h3>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-      <div class="search-wrap"><input placeholder="Cari produk..." value="${search}" oninput="window._catSearch=this.value;navTo('hq-catalog')" style="width:220px"></div>
+      <div class="search-wrap"><input placeholder="Cari produk..." value="${search}" oninput="filterCatalog(this.value)" style="width:220px"></div>
       <button class="btn btn-primary btn-sm" onclick="showAddProduct()">+ Tambah Produk</button>
     </div>
   </div>
   <div class="tbl-wrap"><table>
     <thead><tr><th>Produk</th><th>Kategori</th><th>Unit</th><th>Harga Supplier</th><th>Harga B2B</th><th>Harga B2C</th><th>Stok (FEFO)</th><th></th></tr></thead>
-    <tbody>
+    <tbody id="catTbody">
       ${shown.map(p=>{const ds=BATCHES.some(b=>b.pid===p.id)?totalStock(p.id):p.stock;const nearBatch=getBatches(p.id)[0];const nearExColor=nearBatch?{expired:'var(--red)',critical:'var(--orange)',warning:'#92400e',ok:'var(--green)'}[expiryStatus(nearBatch.expiry)]:'';return`<tr>
         <td><div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px">${p.emoji}</span><div style="font-weight:600;font-size:13px">${p.name}</div></div></td>
         <td><span style="font-size:12px;color:var(--grey)">${p.cat}</span></td>
@@ -1791,11 +1817,53 @@ function pageHqCatalog(){
 </div>`;
 }
 
+function filterCatalog(q){
+  window._catSearch=q;
+  const shown=PRODUCTS.filter(p=>!q||p.name.toLowerCase().includes(q.toLowerCase())||p.cat.toLowerCase().includes(q.toLowerCase()));
+  const tb=document.getElementById('catTbody');if(!tb)return;
+  tb.innerHTML=shown.map(p=>{
+    const ds=BATCHES.some(b=>b.pid===p.id)?totalStock(p.id):p.stock;
+    const nearBatch=getBatches(p.id)[0];
+    const nearExColor=nearBatch?{expired:'var(--red)',critical:'var(--orange)',warning:'#92400e',ok:'var(--green)'}[expiryStatus(nearBatch.expiry)]:'';
+    return`<tr>
+      <td><div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px">${p.emoji}</span><div style="font-weight:600;font-size:13px">${p.name}</div></div></td>
+      <td><span style="font-size:12px;color:var(--grey)">${p.cat}</span></td>
+      <td>${p.unit}</td>
+      <td>${fmtRM(p.supplierPrice)}</td>
+      <td style="font-weight:600;color:var(--navy)">${fmtRM(p.b2bPrice)}</td>
+      <td style="font-weight:600;color:var(--green)">${fmtRM(p.b2cPrice)}</td>
+      <td><span class="pill ${ds<=0?'p-cancel':ds<50?'p-new':'p-done'}">${ds} unit</span>${nearBatch?`<div style="font-size:11px;margin-top:3px;color:${nearExColor}">Luput: ${nearBatch.expiry}</div>`:''}</td>
+      <td><div style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-xs" onclick="editProduct('${p.id}')">Edit</button>
+        <button class="btn btn-red btn-xs" onclick="delProduct('${p.id}')">Padam</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function catDropdown(elId,val){
+  const opts=CATEGORIES.map(c=>`<option value="${c}" ${c===val?'selected':''}>${c}</option>`).join('');
+  return `<select id="${elId}" onchange="if(this.value==='__new__'){document.getElementById('${elId}New').style.display='block';}else{document.getElementById('${elId}New').style.display='none';}">
+    ${opts}
+    <option value="__new__">+ Tambah kategori baru...</option>
+  </select>
+  <input id="${elId}New" placeholder="Nama kategori baru" style="display:none;margin-top:6px;width:100%;padding:10px 14px;border:1.5px solid var(--line);border-radius:var(--radius-sm);background:var(--paper);color:var(--ink)">`;
+}
+
+async function resolveCat(elId){
+  const val=document.getElementById(elId)?.value;
+  if(val!=='__new__')return val||'';
+  const newCat=document.getElementById(elId+'New')?.value?.trim();
+  if(!newCat){toast('❌ Sila isi nama kategori baru');return null;}
+  if(!CATEGORIES.includes(newCat)){CATEGORIES.push(newCat);await saveCategories();}
+  return newCat;
+}
+
 function showAddProduct(){
   openDlg(`<h3>➕ Tambah Produk Baru</h3>
 <div class="form-row">
   <div class="fld full"><label>Nama Produk</label><input id="pName" placeholder="Nama produk"></div>
-  <div class="fld"><label>Kategori</label><input id="pCat" placeholder="cth: Analgesik"></div>
+  <div class="fld"><label>Kategori</label>${catDropdown('pCat','')}</div>
   <div class="fld"><label>Emoji/Ikon</label><input id="pEmoji" placeholder="💊" maxlength="4"></div>
   <div class="fld"><label>Unit</label><select id="pUnit"><option>BOX</option><option>BTL</option><option>CTN</option><option>PCK</option></select></div>
   <div class="fld"><label>Per Karton</label><input id="pPerCtn" type="number" placeholder="12" value="12"></div>
@@ -1813,9 +1881,10 @@ function showAddProduct(){
 async function addProduct(){
   const n=document.getElementById('pName')?.value?.trim();
   if(!n){toast('❌ Sila isi nama produk');return;}
+  const cat=await resolveCat('pCat');if(cat===null)return;
   const p={
     id:'P'+(PRODUCTS.length+1).toString().padStart(3,'0'),
-    name:n,cat:document.getElementById('pCat').value,
+    name:n,cat,
     emoji:document.getElementById('pEmoji').value||'📦',
     unit:document.getElementById('pUnit').value,
     perCtn:parseInt(document.getElementById('pPerCtn').value)||12,
@@ -1832,6 +1901,7 @@ function editProduct(id){
   openDlg(`<h3>✏️ Edit Produk</h3>
 <div class="form-row">
   <div class="fld full"><label>Nama Produk</label><input id="epName" value="${p.name}"></div>
+  <div class="fld"><label>Kategori</label>${catDropdown('epCat',p.cat)}</div>
   <div class="fld"><label>Harga Supplier (RM)</label><input id="epSupP" type="number" step="0.01" value="${p.supplierPrice}"></div>
   <div class="fld"><label>Harga B2B (RM)</label><input id="epB2bP" type="number" step="0.01" value="${p.b2bPrice}"></div>
   <div class="fld"><label>Harga B2C (RM)</label><input id="epB2cP" type="number" step="0.01" value="${p.b2cPrice}"></div>
@@ -1846,6 +1916,8 @@ function editProduct(id){
 async function saveEditProduct(id){
   const p=PRODUCTS.find(x=>x.id===id);if(!p)return;
   p.name=document.getElementById('epName').value;
+  const cat=await resolveCat('epCat');if(cat===null)return;
+  p.cat=cat;
   p.supplierPrice=parseFloat(document.getElementById('epSupP').value)||0;
   p.b2bPrice=parseFloat(document.getElementById('epB2bP').value)||0;
   p.b2cPrice=parseFloat(document.getElementById('epB2cP').value)||0;
@@ -1860,39 +1932,120 @@ function delProduct(id){
   });
 }
 
-const SUPPLIERS_LIST=['PharmaCo Supply Sdn Bhd','MedTech Trading Sdn Bhd','Apex Pharma Distribution','Global Health Supply','Pioneer Medical Sdn Bhd'];
-
 function pageHqSuppliers(){
-  return `<div class="page-head"><h2>🚚 Pembekal</h2><p>Senarai pembekal yang berdaftar dalam sistem</p></div>
+  const active=SUPPLIERS.filter(s=>s.status==='active').length;
+  return `<div class="page-head"><h2>🚚 Pembekal</h2><p>Urus pembekal yang berdaftar dalam sistem</p></div>
 <div class="card">
-  <div class="card-h"><h3>Pembekal Aktif (${SUPPLIERS_LIST.length})</h3>
-    <button class="btn btn-primary btn-sm" onclick="toast('Form tambah pembekal — akan datang')">+ Tambah Pembekal</button>
+  <div class="card-h"><h3>Senarai Pembekal (${SUPPLIERS.length})</h3>
+    <button class="btn btn-primary btn-sm" onclick="showAddSupplier()">+ Tambah Pembekal</button>
   </div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Nama Pembekal</th><th>Produk Dibekal</th><th>PO Aktif</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>Nama Pembekal</th><th>Hubungi</th><th>Telefon</th><th>Syarat Bayar</th><th>PO Aktif</th><th>Status</th><th></th></tr></thead>
     <tbody>
-      ${SUPPLIERS_LIST.map((s,i)=>{
-        const myPos=POS.filter(p=>p.supplier===s);
+      ${SUPPLIERS.length?SUPPLIERS.map(s=>{
+        const myPos=POS.filter(p=>p.supplier===s.name);
         const activePo=myPos.filter(p=>p.status!=='delivered').length;
         return `<tr>
-          <td style="font-weight:700">${s}</td>
-          <td>${Math.floor(Math.random()*8)+3} produk</td>
+          <td><div style="font-weight:700">${s.name}</div><div style="font-size:11px;color:var(--grey)">${s.email}</div></td>
+          <td>${s.contact}</td>
+          <td>${s.phone}</td>
+          <td><span style="font-size:12px;color:var(--grey)">${s.terms}</span></td>
           <td>${activePo>0?`<span class="pill p-process">${activePo} aktif</span>`:'<span style="color:var(--grey)">-</span>'}</td>
-          <td><span class="pill p-done">Aktif</span></td>
+          <td><span class="pill ${s.status==='active'?'p-done':'p-cancel'}">${s.status==='active'?'Aktif':'Tidak Aktif'}</span></td>
           <td><div style="display:flex;gap:6px">
-            <button class="btn btn-ghost btn-xs" onclick="toast('Detail pembekal ${s}')">Lihat</button>
-            <button class="btn btn-primary btn-xs" onclick="showCreatePO('${s}')">+ PO</button>
+            <button class="btn btn-ghost btn-xs" onclick="editSupplier('${s.id}')">Edit</button>
+            <button class="btn btn-primary btn-xs" onclick="showCreatePO('${s.name}')">+ PO</button>
+            <button class="btn btn-red btn-xs" onclick="delSupplier('${s.id}')">Padam</button>
           </div></td>
         </tr>`;
-      }).join('')}
+      }).join(''):`<tr><td colspan="7"><div class="empty-state" style="padding:40px"><div class="empty-icon">🚚</div><h4>Belum ada pembekal</h4><p>Tambah pembekal pertama</p></div></td></tr>`}
     </tbody>
   </table></div>
 </div>`;
 }
 
-function showCreatePO(supplier){
+function showAddSupplier(){
+  openDlg(`<h3>➕ Tambah Pembekal Baru</h3>
+<div class="form-row">
+  <div class="fld full"><label>Nama Syarikat</label><input id="supName" placeholder="Nama syarikat pembekal"></div>
+  <div class="fld"><label>Nama Pegawai Hubungi</label><input id="supContact" placeholder="Nama pegawai"></div>
+  <div class="fld"><label>No. Telefon</label><input id="supPhone" placeholder="03-XXXX XXXX"></div>
+  <div class="fld"><label>E-mel</label><input id="supEmail" type="email" placeholder="sales@syarikat.com"></div>
+  <div class="fld"><label>Syarat Pembayaran</label><select id="supTerms"><option>Net 30</option><option>Net 45</option><option>Net 60</option><option>COD</option></select></div>
+  <div class="fld full"><label>Alamat</label><textarea id="supAddr" rows="2" placeholder="Alamat penuh syarikat"></textarea></div>
+</div>
+<div class="dlg-footer">
+  <button class="btn btn-ghost" onclick="closeDlg()">Batal</button>
+  <button class="btn btn-primary" onclick="addSupplier()">Simpan</button>
+</div>`,true);
+}
+
+async function addSupplier(){
+  const name=document.getElementById('supName')?.value?.trim();
+  if(!name){toast('❌ Sila isi nama syarikat');return;}
+  const s={
+    id:uid('SUP'),name,
+    contact:document.getElementById('supContact').value,
+    phone:document.getElementById('supPhone').value,
+    email:document.getElementById('supEmail').value,
+    address:document.getElementById('supAddr').value,
+    terms:document.getElementById('supTerms').value,
+    status:'active',
+  };
+  SUPPLIERS.push(s);await saveSuppliers();closeDlg();navTo('hq-suppliers');toast('✓ Pembekal '+name+' ditambah');
+}
+
+function editSupplier(id){
+  const s=SUPPLIERS.find(x=>x.id===id);if(!s)return;
+  openDlg(`<h3>✏️ Edit Pembekal</h3>
+<div class="form-row">
+  <div class="fld full"><label>Nama Syarikat</label><input id="esName" value="${s.name}"></div>
+  <div class="fld"><label>Nama Pegawai Hubungi</label><input id="esContact" value="${s.contact}"></div>
+  <div class="fld"><label>No. Telefon</label><input id="esPhone" value="${s.phone}"></div>
+  <div class="fld"><label>E-mel</label><input id="esEmail" type="email" value="${s.email}"></div>
+  <div class="fld"><label>Syarat Pembayaran</label><select id="esTerms">
+    ${['Net 30','Net 45','Net 60','COD'].map(t=>`<option ${s.terms===t?'selected':''}>${t}</option>`).join('')}
+  </select></div>
+  <div class="fld"><label>Status</label><select id="esStatus">
+    <option value="active" ${s.status==='active'?'selected':''}>Aktif</option>
+    <option value="inactive" ${s.status==='inactive'?'selected':''}>Tidak Aktif</option>
+  </select></div>
+  <div class="fld full"><label>Alamat</label><textarea id="esAddr" rows="2">${s.address}</textarea></div>
+</div>
+<div class="dlg-footer">
+  <button class="btn btn-ghost" onclick="closeDlg()">Batal</button>
+  <button class="btn btn-primary" onclick="saveEditSupplier('${id}')">Simpan</button>
+</div>`,true);
+}
+
+async function saveEditSupplier(id){
+  const s=SUPPLIERS.find(x=>x.id===id);if(!s)return;
+  s.name=document.getElementById('esName').value;
+  s.contact=document.getElementById('esContact').value;
+  s.phone=document.getElementById('esPhone').value;
+  s.email=document.getElementById('esEmail').value;
+  s.terms=document.getElementById('esTerms').value;
+  s.status=document.getElementById('esStatus').value;
+  s.address=document.getElementById('esAddr').value;
+  await saveSuppliers();closeDlg();navTo('hq-suppliers');toast('✓ Pembekal dikemaskini');
+}
+
+function delSupplier(id){
+  const s=SUPPLIERS.find(x=>x.id===id);
+  showConfirm('Padam Pembekal','Padam "'+s?.name+'"? Tindakan ini tidak boleh dibatalkan.','Padam',async()=>{
+    SUPPLIERS=SUPPLIERS.filter(x=>x.id!==id);await saveSuppliers();navTo('hq-suppliers');toast('✓ Pembekal dipadam');
+  });
+}
+
+function showCreatePO(supplier=''){
+  const supField=supplier
+    ?`<div class="fld"><label>Pembekal</label><select id="po_supplier" disabled><option value="${supplier}" selected>${supplier}</option></select></div>`
+    :`<div class="fld"><label>Pembekal</label><select id="po_supplier">
+        <option value="">-- Pilih Pembekal --</option>
+        ${SUPPLIERS.filter(s=>s.status==='active').map(s=>`<option value="${s.name}">${s.name}</option>`).join('')}
+      </select></div>`;
   openDlg(`<h3>📄 Buat Purchase Order</h3>
-<div class="fld"><label>Pembekal</label><input value="${supplier}" disabled></div>
+${supField}
 <p style="font-size:12px;font-weight:700;font-family:Sora;margin-bottom:10px;color:var(--grey)">PILIH PRODUK</p>
 <div style="max-height:320px;overflow-y:auto;border:1px solid var(--line);border-radius:var(--radius-sm)">
   <table style="width:100%;border-collapse:collapse">
@@ -1929,11 +2082,13 @@ function showCreatePO(supplier){
 <div style="font-size:12px;color:var(--grey);margin-top:8px">💡 <b>FOC</b> = Free of Charge — kuantiti percuma dari pembekal (tidak dikenakan bayaran)</div>
 <div class="dlg-footer">
   <button class="btn btn-ghost" onclick="closeDlg()">Batal</button>
-  <button class="btn btn-primary" onclick="createPO('${supplier}')">Hantar PO</button>
+  <button class="btn btn-primary" onclick="createPO()">Hantar PO</button>
 </div>`,true);
 }
 
-async function createPO(supplier){
+async function createPO(){
+  const supplier=document.getElementById('po_supplier')?.value||'';
+  if(!supplier){toast('❌ Sila pilih pembekal');return;}
   const items=PRODUCTS.map(p=>{
     const qty=parseInt(document.getElementById('po_qty_'+p.id)?.value)||0;
     const foc=parseInt(document.getElementById('po_foc_'+p.id)?.value)||0;
@@ -1949,7 +2104,7 @@ function pageHqPO(){
   return `<div class="page-head"><h2>📄 Purchase Orders</h2><p>PO yang dihantar ke pembekal</p></div>
 <div class="card">
   <div class="card-h"><h3>Senarai PO (${POS.length})</h3>
-    <button class="btn btn-primary btn-sm" onclick="navTo('hq-suppliers')">+ Buat PO Baru</button>
+    <button class="btn btn-primary btn-sm" onclick="showCreatePO()">+ Buat PO Baru</button>
   </div>
   <div class="tbl-wrap"><table>
     <thead><tr>
@@ -1973,8 +2128,9 @@ function pageHqPO(){
               :`<span style="color:var(--line)">—</span>`}
           </td>
           <td>${statusPill(po.status)}</td>
-          <td><div style="display:flex;gap:6px">
+          <td><div style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn btn-ghost btn-xs" onclick="viewPO('${po.id}')">Lihat</button>
+            <button class="btn btn-ghost btn-xs" onclick="printPO('${po.id}')" title="Cetak PO">🖨️</button>
             ${po.status==='delivered'&&!GRNS.some(g=>g.poRef===po.id)?`<button class="btn btn-green btn-xs" onclick="createGRN('${po.id}')">Buat GRN</button>`:''}
             ${GRNS.some(g=>g.poRef===po.id)?`<span style="font-size:11px;color:var(--green);font-weight:600">✓ GRN dibuat</span>`:''}
           </div></td>
@@ -2021,7 +2177,61 @@ ${totalFoc>0?`<tr style="background:var(--green-l)">
 </tr>`:''}
 </tbody></table>
 ${hasFoc?`<div style="font-size:12px;color:var(--green);margin-top:10px;font-weight:600">✓ PO ini mengandungi item FOC (Free of Charge) dari pembekal</div>`:''}
-<div class="dlg-footer"><button class="btn btn-ghost" onclick="closeDlg()">Tutup</button></div>`,true);
+<div class="dlg-footer">
+  <button class="btn btn-ghost" onclick="closeDlg()">Tutup</button>
+  <button class="btn btn-primary" onclick="printPO('${po.id}')">🖨️ Cetak</button>
+</div>`,true);
+}
+
+function printPO(id){
+  const po=POS.find(x=>x.id===id);if(!po)return;
+  const sup=SUPPLIERS.find(s=>s.name===po.supplier)||{};
+  const totalFoc=po.items.reduce((s,i)=>s+(i.foc||0),0);
+  const rows=po.items.map(i=>`<tr>
+    <td>${pemoji(i.pid)} ${pname(i.pid)}</td>
+    <td style="text-align:center">${i.qty}</td>
+    <td style="text-align:center">${(i.foc||0)>0?`+${i.foc} FOC`:'-'}</td>
+    <td style="text-align:center">RM${(i.price||0).toFixed(2)}</td>
+    <td style="text-align:right;font-weight:600">RM${(i.qty*(i.price||0)).toFixed(2)}</td>
+  </tr>`).join('');
+  const w=window.open('','_blank','width=794,height=1123');
+  if(!w)return;
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>PO ${po.id}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;color:#111;background:#fff;padding:40px;font-size:13px}
+h1{font-size:22px;margin-bottom:4px}
+.sub{color:#555;font-size:13px;margin-bottom:20px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin-bottom:24px;font-size:13px}
+.grid b{color:#555;font-weight:600}
+table{width:100%;border-collapse:collapse;margin-bottom:16px}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:8px 10px;background:#f4f5f8;border:1px solid #dde3ee}
+td{padding:8px 10px;border:1px solid #dde3ee;vertical-align:middle}
+.total-row{background:#f4f5f8;font-weight:700}
+.foc-row{background:#e6f4ec;color:#1e8449;font-weight:700}
+.footer{margin-top:32px;padding-top:16px;border-top:2px solid #111;display:flex;justify-content:space-between;font-size:12px;color:#555}
+.sig{text-align:center;width:200px}
+.sig-line{border-bottom:1px solid #555;margin-bottom:6px;height:40px}
+@media print{button{display:none}}
+</style></head><body>
+<h1>PURCHASE ORDER</h1>
+<div class="sub">${po.id} &nbsp;|&nbsp; Tarikh: ${po.date}</div>
+<div class="grid">
+  <div><b>Kepada (Pembekal):</b><br><strong>${po.supplier}</strong><br>${sup.contact||''}<br>${sup.phone||''}<br>${sup.email||''}<br><span style="font-size:12px;color:#555">${sup.address||''}</span></div>
+  <div><b>Daripada:</b><br><strong>${SESSION?.org||'OrcaHub'}</strong><br><br><b>Status PO:</b> ${po.status.toUpperCase()}<br><b>Syarat Bayar:</b> ${sup.terms||'-'}</div>
+</div>
+<table>
+  <thead><tr><th>Produk</th><th style="text-align:center;width:60px">Qty</th><th style="text-align:center;width:80px">FOC</th><th style="text-align:center;width:90px">Harga/unit</th><th style="text-align:right;width:90px">Subtotal</th></tr></thead>
+  <tbody>${rows}<tr class="total-row"><td colspan="4" style="text-align:right">JUMLAH BAYARAN</td><td style="text-align:right">RM${po.total.toFixed(2)}</td></tr>${totalFoc>0?`<tr class="foc-row"><td colspan="4" style="text-align:right">JUMLAH FOC (Percuma)</td><td style="text-align:right">+${totalFoc} unit</td></tr>`:''}</tbody>
+</table>
+<div class="footer">
+  <div class="sig"><div class="sig-line"></div><div>Disediakan oleh</div></div>
+  <div class="sig"><div class="sig-line"></div><div>Diluluskan oleh</div></div>
+  <div class="sig"><div class="sig-line"></div><div>Diterima oleh (Pembekal)</div></div>
+</div>
+<script>window.onload=function(){window.print();window.onafterprint=function(){window.close();}}<\/script>
+</body></html>`);
+  w.document.close();
 }
 
 function createGRN(poId){
@@ -2295,7 +2505,7 @@ function pageB2bOrder(){
 <div class="card">
   <div class="tbl-wrap"><table>
     <thead><tr><th>Produk</th><th>Kategori</th><th>Harga B2B</th><th>Stok HQ</th><th>Qty</th><th>Subtotal</th></tr></thead>
-    <tbody>
+    <tbody id="b2bTbody">
       ${shown.map(p=>{
         const inCart=B2B_CART[p.id]||0;
         const sub=inCart*p.b2bPrice;
@@ -2324,7 +2534,24 @@ ${cartCount>0?`<div class="card" style="background:var(--navy-l);border-color:va
 
 function bindB2bOrder(){
   const inp=document.getElementById('b2bSearchInp');
-  if(inp)inp.addEventListener('input',function(){window._b2bShopSearch=this.value;navTo('b2b-order');});
+  if(inp)inp.addEventListener('input',function(){filterB2bOrder(this.value);});
+}
+
+function filterB2bOrder(q){
+  window._b2bShopSearch=q;
+  const shown=PRODUCTS.filter(p=>!q||p.name.toLowerCase().includes(q.toLowerCase())||p.cat.toLowerCase().includes(q.toLowerCase()));
+  const tb=document.getElementById('b2bTbody');if(!tb)return;
+  tb.innerHTML=shown.map(p=>{
+    const inCart=B2B_CART[p.id]||0;const sub=inCart*p.b2bPrice;
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">${p.emoji}</span><div style="font-weight:600;font-size:13px">${p.name}</div></div></td>
+      <td style="font-size:12px;color:var(--grey)">${p.cat}</td>
+      <td style="font-weight:700;color:var(--navy)">${fmtRM(p.b2bPrice)}</td>
+      <td><span class="pill ${p.stock<=0?'p-cancel':p.stock<50?'p-new':'p-done'}">${p.stock}</span></td>
+      <td><input type="number" min="0" value="${inCart}" id="b2b_qty_${p.id}" onchange="setB2bCart('${p.id}',this.value)" style="width:70px;padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;text-align:center"></td>
+      <td style="font-weight:600;color:var(--navy)">${sub>0?fmtRM(sub):'-'}</td>
+    </tr>`;
+  }).join('');
 }
 
 async function setB2bCart(pid,val){
@@ -2391,8 +2618,8 @@ function pageB2cStore(){
     </button>
   </div>
 </div>
-<div class="store-grid">
-  ${shown.map(p=>{
+<div class="store-grid" id="b2cGrid">
+  ${shown.length?shown.map(p=>{
     const inCart=B2C_CART[p.id]||0;
     return `<div class="prod-card">
       <div class="prod-img">${p.emoji}</div>
@@ -2414,14 +2641,47 @@ function pageB2cStore(){
         </div>
       </div>
     </div>`;
-  }).join('')}
-</div>
-${shown.length===0?`<div class="empty-state"><div class="empty-icon">🔍</div><h4>Tiada produk dijumpai</h4><p>Cuba carian lain</p></div>`:''}`;
+  }).join(''):`<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🔍</div><h4>Tiada produk dijumpai</h4><p>Cuba carian lain</p></div>`}
+</div>`;
 }
 
 function bindB2cStore(){
   const inp=document.getElementById('b2cSearchInp');
-  if(inp)inp.addEventListener('input',function(){window._b2cSearch=this.value;navTo('b2c-store');});
+  if(inp)inp.addEventListener('input',function(){filterB2cStore(this.value);});
+}
+
+function filterB2cStore(q){
+  window._b2cSearch=q;
+  const catFilter=window._b2cCat||'Semua';
+  const shown=PRODUCTS.filter(p=>{
+    const matchSearch=!q||p.name.toLowerCase().includes(q.toLowerCase());
+    const matchCat=catFilter==='Semua'||p.cat===catFilter;
+    return matchSearch&&matchCat;
+  });
+  const grid=document.getElementById('b2cGrid');if(!grid)return;
+  grid.innerHTML=shown.length?shown.map(p=>{
+    const inCart=B2C_CART[p.id]||0;
+    return `<div class="prod-card">
+      <div class="prod-img">${p.emoji}</div>
+      <div class="prod-info">
+        <div class="prod-cat">${p.cat}</div>
+        <div class="prod-name">${p.name}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px">
+          <div class="prod-price">${fmtRM(p.b2cPrice)}</div>
+          ${p.stock<=0?'<span class="pill p-cancel" style="font-size:11px">Habis</span>':''}
+        </div>
+        <div class="prod-actions" style="margin-top:10px">
+          ${inCart>0?`<div class="cart-qty-wrap">
+            <button onclick="setB2cCart('${p.id}',${inCart-1})">−</button>
+            <span>${inCart}</span>
+            <button onclick="setB2cCart('${p.id}',${inCart+1})">+</button>
+          </div>
+          <button class="btn btn-red btn-sm" onclick="setB2cCart('${p.id}',0)">Buang</button>`
+          :`<button class="btn btn-primary" style="flex:1" onclick="setB2cCart('${p.id}',1)" ${p.stock<=0?'disabled':''}>+ Tambah</button>`}
+        </div>
+      </div>
+    </div>`;
+  }).join(''):`<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🔍</div><h4>Tiada produk dijumpai</h4><p>Cuba carian lain</p></div>`;
 }
 
 async function setB2cCart(pid,val){
@@ -2633,7 +2893,33 @@ function pageSettings(){return `<div class="page-head"><h2>⚙️ Tetapan</h2><p
 <div class="card"><div class="card-h"><h3>Langganan</h3></div><div class="card-body">
 <p style="margin-bottom:12px">Plan semasa: <span class="badge badge-${SESSION?.plan||'starter'}">${(SESSION?.plan||'starter').toUpperCase()}</span></p>
 <button class="btn btn-ghost" onclick="toast('Hubungi sales@orcahub.com untuk naik taraf')">Naik Taraf Plan</button>
-</div></div>`;}
+</div></div>
+${SESSION?.role==='hq'?`<div class="card"><div class="card-h"><h3>📁 Kategori Produk</h3><span style="font-size:12px;color:var(--grey)">${CATEGORIES.length} kategori</span></div><div class="card-body">
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+  ${CATEGORIES.map((c,i)=>`<div style="display:inline-flex;align-items:center;gap:4px;background:var(--navy-l);border-radius:20px;padding:5px 12px">
+    <span style="font-size:13px;font-weight:600;color:var(--navy)">${c}</span>
+    <button onclick="delCategory(${i})" style="background:none;border:none;color:var(--grey);font-size:15px;cursor:pointer;padding:0 0 0 4px;line-height:1" title="Padam">×</button>
+  </div>`).join('')}
+</div>
+<div style="display:flex;gap:8px">
+  <input id="newCatInp" placeholder="Nama kategori baru..." style="flex:1;padding:10px 14px;border:1.5px solid var(--line);border-radius:var(--radius-sm);background:var(--paper);color:var(--ink)">
+  <button class="btn btn-primary btn-sm" onclick="addCategoryFromSettings()">+ Tambah</button>
+</div>
+</div></div>`:''}`;
+}
+
+async function delCategory(idx){
+  showConfirm('Padam Kategori','Padam kategori "'+CATEGORIES[idx]+'"?','Padam',async()=>{
+    CATEGORIES.splice(idx,1);await saveCategories();navTo('settings');toast('✓ Kategori dipadam');
+  });
+}
+
+async function addCategoryFromSettings(){
+  const v=document.getElementById('newCatInp')?.value?.trim();
+  if(!v){toast('❌ Sila isi nama kategori');return;}
+  if(CATEGORIES.includes(v)){toast('❌ Kategori sudah wujud');return;}
+  CATEGORIES.push(v);await saveCategories();navTo('settings');toast('✓ Kategori "'+v+'" ditambah');
+}
 
 </script>
 </body>
