@@ -672,6 +672,7 @@ let B2C_CART={};
 let B2B_CART={};
 let NOTIFS=[];
 let BATCHES=[];
+let SCANLOG=[];
 
 // ===== LOAD / SEED DATA =====
 async function loadData(){
@@ -692,7 +693,9 @@ async function loadData(){
     B2B_CART=bcart?JSON.parse(bcart):{};
     const batches=await STORE.get('oh_batches');
     BATCHES=batches?JSON.parse(batches):seedBatches();
-  }catch(e){PRODUCTS=SEED_PRODUCTS.map(x=>({...x}));BATCHES=seedBatches();}
+    const scanlog=await STORE.get('oh_scanlog');
+    SCANLOG=scanlog?JSON.parse(scanlog):[];
+  }catch(e){PRODUCTS=SEED_PRODUCTS.map(x=>({...x}));BATCHES=seedBatches();SCANLOG=[];}
 }
 
 async function saveB2BOrders(){await STORE.set('oh_b2b_orders',JSON.stringify(B2B_ORDERS));}
@@ -703,6 +706,11 @@ async function saveProducts(){await STORE.set('oh_products',JSON.stringify(PRODU
 async function saveB2CCart(){await STORE.set('oh_b2c_cart_'+SESSION?.username,JSON.stringify(B2C_CART));}
 async function saveB2BCart(){await STORE.set('oh_b2b_cart_'+SESSION?.username,JSON.stringify(B2B_CART));}
 async function saveBatches(){await STORE.set('oh_batches',JSON.stringify(BATCHES));}
+async function saveScanLog(){await STORE.set('oh_scanlog',JSON.stringify(SCANLOG));}
+async function logScan(action,code,pid,batchNo,result,ref){
+  SCANLOG.push({id:uid('SCN'),ts:new Date().toISOString(),user:SESSION?.name||'',action,code,pid,batchNo,result,ref});
+  await saveScanLog();
+}
 
 function seedB2BOrders(){
   return [
@@ -799,6 +807,20 @@ function allocateFEFO(pid,qty){
 }
 function daysToExpiry(dateStr){const d=new Date(dateStr);const now=new Date();now.setHours(0,0,0,0);return Math.floor((d-now)/(1000*60*60*24));}
 function expiryStatus(dateStr){const d=daysToExpiry(dateStr);if(d<0)return 'expired';if(d<90)return 'critical';if(d<180)return 'warning';return 'ok';}
+function batchCode(batch){return `${batch.pid}-${batch.batchNo}`;}
+function findBatchByCode(code){const c=code.trim().toUpperCase();return BATCHES.find(b=>batchCode(b).toUpperCase()===c)||null;}
+function scanInput(id,placeholder,onEnterCode){
+  return `<div style="margin-bottom:10px">
+    <div style="display:flex;align-items:center;gap:8px;background:var(--navy-l);border:2px solid var(--navy);border-radius:var(--radius-sm);padding:9px 13px">
+      <span style="font-size:18px">📷</span>
+      <input id="${id}" placeholder="${placeholder}" autocomplete="off" spellcheck="false"
+        style="flex:1;background:none;border:none;font-size:13px;color:var(--ink);font-family:monospace"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();const scanVal=this.value.trim();if(scanVal){${onEnterCode};this.value='';this.focus();}}">
+    </div>
+    <div style="font-size:11px;color:var(--grey);margin-top:3px;padding-left:2px">Scan barcode atau taip kod batch, kemudian tekan Enter</div>
+  </div>`;
+}
+function focusScan(id){setTimeout(()=>{const el=document.getElementById(id);if(el)el.focus();},150);}
 
 // ===== AUTH =====
 let _authRole='superadmin';
@@ -892,6 +914,7 @@ const SYNC_KEYS={
   oh_grns:       ['hq-grn'],
   oh_products:   ['hq-catalog','b2b-order','b2c-store','sup-products'],
   oh_batches:    ['hq-batches','hq-catalog','hq-dashboard'],
+  oh_scanlog:    ['hq-scanlog'],
 };
 
 function initCrossTabSync(){
@@ -909,6 +932,7 @@ function initCrossTabSync(){
       if(e.key==='oh_grns'&&e.newValue)        GRNS=JSON.parse(e.newValue);
       if(e.key==='oh_products'&&e.newValue)    PRODUCTS=JSON.parse(e.newValue);
       if(e.key==='oh_batches'&&e.newValue)     BATCHES=JSON.parse(e.newValue);
+      if(e.key==='oh_scanlog'&&e.newValue)     SCANLOG=JSON.parse(e.newValue);
     }catch(err){}
 
     // If current page is affected, re-render it
@@ -1002,6 +1026,7 @@ const MENUS={
     {id:'hq-b2b-orders',ic:'📋',label:'Order B2B',badge:'b2b'},
     {id:'hq-catalog',   ic:'📦',label:'Katalog Produk'},
     {id:'hq-batches',   ic:'🗓️',label:'Batch & Expiry',badge:'expiry'},
+    {id:'hq-scanlog',   ic:'📋',label:'Log Scan'},
     {id:'hq-suppliers', ic:'🚚',label:'Pembekal'},
     {id:'hq-po',        ic:'📄',label:'Purchase Orders',badge:'po'},
     {id:'hq-grn',       ic:'✅',label:'GRN'},
@@ -1065,7 +1090,7 @@ function navTo(page){
   buildSidebar();
   renderPage();
   const labels={'sa-dashboard':'Dashboard','sa-tenants':'Tenants','sa-plans':'Subscription Plans','sa-analytics':'Analytics',
-    'hq-dashboard':'Dashboard','hq-b2b-orders':'Order B2B','hq-catalog':'Katalog','hq-batches':'Batch & Expiry','hq-suppliers':'Pembekal','hq-po':'Purchase Orders','hq-grn':'GRN','hq-b2c-orders':'Order B2C','hq-analytics':'Analitik',
+    'hq-dashboard':'Dashboard','hq-b2b-orders':'Order B2B','hq-catalog':'Katalog','hq-batches':'Batch & Expiry','hq-scanlog':'Log Scan','hq-suppliers':'Pembekal','hq-po':'Purchase Orders','hq-grn':'GRN','hq-b2c-orders':'Order B2C','hq-analytics':'Analitik',
     'b2b-shop':'Dashboard','b2b-order':'Order Baru','b2b-myorders':'Order Saya',
     'b2c-store':'Kedai','b2c-cart':'Troli','b2c-orders':'Order Saya',
     'sup-dashboard':'Dashboard','sup-products':'Produk Saya','sup-po':'Incoming PO','sup-delivery':'Penghantaran',
@@ -1114,7 +1139,7 @@ function closeUserMenu(){document.getElementById('userMenu').style.display='none
 
 // ===== LOGOUT =====
 function logout(){
-  SESSION=null;B2B_ORDERS=[];B2C_ORDERS=[];POS=[];GRNS=[];PRODUCTS=[];BATCHES=[];
+  SESSION=null;B2B_ORDERS=[];B2C_ORDERS=[];POS=[];GRNS=[];PRODUCTS=[];BATCHES=[];SCANLOG=[];
   B2C_CART={};B2B_CART={};NOTIFS=[];
   document.getElementById('app').style.display='none';
   document.getElementById('landing').style.display='block';
@@ -1156,6 +1181,7 @@ function renderPage(){
   else if(pg==='hq-dashboard')c.innerHTML=pageHqDashboard();
   else if(pg==='hq-b2b-orders')c.innerHTML=pageHqB2bOrders();
   else if(pg==='hq-batches')  c.innerHTML=pageHqBatches();
+  else if(pg==='hq-scanlog')  c.innerHTML=pageHqScanLog();
   else if(pg==='hq-catalog')  c.innerHTML=pageHqCatalog();
   else if(pg==='hq-suppliers')c.innerHTML=pageHqSuppliers();
   else if(pg==='hq-po')       c.innerHTML=pageHqPO();
@@ -1411,6 +1437,68 @@ ${criticalBatches>0?`<div style="background:var(--red-l);border:1px solid var(--
 }
 
 // ============================================================
+// ===== PRINT LABEL =====
+function showPrintLabel(batchId){
+  const b=BATCHES.find(x=>x.id===batchId);if(!b)return;
+  const p=PRODUCTS.find(x=>x.id===b.pid);
+  const code=batchCode(b);
+  const exCol=expiryStatus(b.expiry)==='expired'?'var(--red)':expiryStatus(b.expiry)==='critical'?'var(--orange)':'var(--green)';
+  openDlg(`<h3>🖨️ Label Batch</h3>
+<div style="border:2px dashed var(--line);border-radius:var(--radius);padding:24px;text-align:center;margin-bottom:16px">
+  <div style="font-size:16px;font-weight:700;margin-bottom:4px">${p?p.emoji+' '+p.name:b.pid}</div>
+  <div style="font-family:monospace;font-size:26px;font-weight:800;letter-spacing:3px;color:var(--navy);background:var(--sand);padding:12px 20px;border-radius:8px;margin:14px 0;display:inline-block;border:1px solid var(--line)">${code}</div>
+  <div style="font-size:13px;color:var(--grey);line-height:2">
+    <div>No. Batch: <strong style="color:var(--ink)">${b.batchNo}</strong></div>
+    <div>Tarikh Luput: <strong style="color:${exCol}">${b.expiry}</strong> (${daysToExpiry(b.expiry)}h lagi)</div>
+    <div>Qty: <strong style="color:var(--ink)">${b.qty} unit</strong></div>
+  </div>
+  <div style="margin-top:14px;padding:8px 14px;background:var(--orange-l);border-radius:8px;font-size:11px;color:#9a5912;display:inline-block">📌 Cetak dan tampal pada kotak fizikal</div>
+</div>
+<div class="dlg-footer">
+  <button class="btn btn-ghost" onclick="closeDlg()">Tutup</button>
+  <button class="btn btn-primary" onclick="window.print()">🖨️ Cetak</button>
+</div>`);
+}
+
+// ===== HQ SCAN LOG =====
+function pageHqScanLog(){
+  let tab=window._scanLogTab||'all';
+  let rows=SCANLOG.slice();
+  if(tab==='ok') rows=rows.filter(s=>['ok','earlier'].includes(s.result));
+  else if(tab==='blocked') rows=rows.filter(s=>['blocked','expired'].includes(s.result));
+  rows.sort((a,b)=>b.ts.localeCompare(a.ts));
+  const pillMap={ok:'p-done',earlier:'p-process',blocked:'p-cancel',expired:'p-cancel',notfound:'p-pending'};
+  const labelMap={ok:'Berjaya',earlier:'Awal Diterima',blocked:'Dihalang',expired:'Luput',notfound:'Tak Jumpa'};
+  return `<div class="page-head"><h2>📋 Log Scan</h2><p>Rekod audit semua percubaan scan batch — untuk keperluan GDPMD</p></div>
+<div class="card">
+  <div class="card-h">
+    <h3>Log Scan (${rows.length})</h3>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-sm ${tab==='all'?'btn-primary':'btn-ghost'}" onclick="window._scanLogTab='all';navTo('hq-scanlog')">Semua</button>
+      <button class="btn btn-sm ${tab==='ok'?'btn-primary':'btn-ghost'}" onclick="window._scanLogTab='ok';navTo('hq-scanlog')">Berjaya</button>
+      <button class="btn btn-sm ${tab==='blocked'?'btn-primary':'btn-ghost'}" onclick="window._scanLogTab='blocked';navTo('hq-scanlog')">Dihalang</button>
+    </div>
+  </div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Masa</th><th>Pengguna</th><th>Tindakan</th><th>Kod Discan</th><th>No. Batch</th><th>Keputusan</th><th>Rujukan</th></tr></thead>
+    <tbody>
+      ${rows.length?rows.map(s=>{
+        const rowBg=['blocked','expired'].includes(s.result)?'background:var(--red-l)':s.result==='earlier'?'background:var(--orange-l)':s.result==='ok'?'background:var(--green-l)':'';
+        return`<tr style="${rowBg}">
+          <td style="font-size:12px;white-space:nowrap">${new Date(s.ts).toLocaleString('ms-MY',{dateStyle:'short',timeStyle:'short'})}</td>
+          <td>${s.user}</td>
+          <td><span class="pill ${s.action==='pick'?'p-process':'p-done'}">${s.action==='pick'?'Pick':'GRN'}</span></td>
+          <td style="font-family:monospace;font-size:12px">${s.code}</td>
+          <td style="font-size:12px">${s.batchNo||'—'}</td>
+          <td><span class="pill ${pillMap[s.result]||'p-pending'}">${labelMap[s.result]||s.result}</span></td>
+          <td style="font-size:12px;color:var(--grey)">${s.ref||'—'}</td>
+        </tr>`;
+      }).join(''):`<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📋</div><h4>Tiada log scan</h4><p>Log direkodkan setiap kali barcode discan</p></div></td></tr>`}
+    </tbody>
+  </table></div>
+</div>`;
+}
+
 // ===== HQ BATCH & EXPIRY =====
 function pageHqBatches(){
   let tab=window._batchTab||'all';
@@ -1445,23 +1533,26 @@ function pageHqBatches(){
     </div>
   </div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Produk</th><th>No. Batch</th><th>Qty Baki</th><th>Tarikh Luput</th><th>Hari Lagi</th><th>Status</th><th>GRN Ref</th></tr></thead>
+    <thead><tr><th>Produk</th><th>No. Batch</th><th>Kod Batch</th><th>Qty Baki</th><th>Tarikh Luput</th><th>Hari Lagi</th><th>Status</th><th>GRN Ref</th><th></th></tr></thead>
     <tbody>
       ${rows.length?rows.map(b=>{
         const p=PRODUCTS.find(x=>x.id===b.pid);
         const st=expiryStatus(b.expiry);
         const days=daysToExpiry(b.expiry);
         const rowBg=st==='expired'?'background:var(--red-l)':st==='critical'?'background:var(--orange-l)':st==='warning'?'background:#fffbeb':'';
+        const code=batchCode(b);
         return`<tr style="${rowBg}">
           <td><div style="display:flex;align-items:center;gap:6px"><span>${p?p.emoji:'📦'}</span><span style="font-weight:600">${p?p.name:b.pid}</span></div></td>
           <td style="font-family:monospace;font-weight:600">${b.batchNo}</td>
+          <td><code style="background:var(--sand);padding:3px 8px;border-radius:6px;font-size:12px;cursor:pointer;user-select:all;border:1px solid var(--line)" title="Klik untuk salin" onclick="navigator.clipboard.writeText('${code}');toast('✓ Kod disalin')">${code}</code></td>
           <td><span class="pill ${b.qty<=0?'p-cancel':b.qty<50?'p-new':'p-done'}">${b.qty} unit</span></td>
           <td style="font-weight:600">${b.expiry}</td>
           <td style="color:${statusColorMap[st]};font-weight:700">${days<0?'Luput '+Math.abs(days)+'h':days+'h'}</td>
           <td><span class="pill ${st==='expired'?'p-cancel':st==='critical'?'p-new':st==='warning'?'p-process':'p-done'}">${statusLabelMap[st]}</span></td>
           <td style="font-size:12px;color:var(--grey)">${b.grnRef||'—'}</td>
+          <td><button class="btn btn-ghost btn-xs" onclick="showPrintLabel('${b.id}')">🖨️ Cetak</button></td>
         </tr>`;
-      }).join(''):`<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">🗓️</div><h4>Tiada batch</h4></div></td></tr>`}
+      }).join(''):`<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">🗓️</div><h4>Tiada batch</h4></div></td></tr>`}
     </tbody>
   </table></div>
 </div>`;
@@ -1546,47 +1637,119 @@ async function updateB2bStatus(id,status){
 }
 
 function showB2bFEFODialog(o){
-  const rows=o.items.map(i=>{
+  window._pickConfirmed={};
+  window._pickAllocs={};
+  window._pickOrder=o.id;
+
+  const blocks=o.items.map(i=>{
     const pr=PRODUCTS.find(x=>x.id===i.pid);
     const alloc=allocateFEFO(i.pid,i.qty);
-    if(!alloc)return`<tr style="background:var(--red-l)"><td>${pr?pr.name:i.pid}</td><td>${i.qty}</td><td colspan="2" style="color:var(--red)">⚠️ Stok batch tidak mencukupi</td></tr>`;
-    return alloc.map((a,idx)=>`<tr>
-      ${idx===0?`<td rowspan="${alloc.length}">${pr?pr.emoji+' '+pr.name:i.pid}</td><td rowspan="${alloc.length}">${i.qty}</td>`:''}
-      <td>${a.batchNo}</td><td style="color:${expiryStatus(a.expiry)==='expired'?'var(--red)':expiryStatus(a.expiry)==='critical'?'var(--orange)':'var(--green)'};">${a.expiry} (${daysToExpiry(a.expiry)}h) — ${a.take} unit</td>
-    </tr>`).join('');
+    if(!alloc)return`<div style="background:var(--red-l);border-radius:var(--radius-sm);padding:12px;margin-bottom:10px;color:var(--red)">⚠️ <strong>${pr?pr.name:i.pid}</strong>: Stok batch tidak mencukupi</div>`;
+    alloc.forEach(a=>{window._pickAllocs[a.batchId]={...a,pid:i.pid};});
+    return alloc.map(a=>{
+      const code=batchCode({pid:i.pid,batchNo:a.batchNo});
+      const exCol=expiryStatus(a.expiry)==='expired'?'var(--red)':expiryStatus(a.expiry)==='critical'?'var(--orange)':'var(--green)';
+      return`<div style="background:var(--sand);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+          <div>
+            <span style="font-weight:600">${pr?pr.emoji+' '+pr.name:i.pid}</span>
+            <span style="font-size:12px;color:var(--grey);margin-left:8px">Ambil <strong>${a.take}</strong> unit dari
+              <code style="background:var(--paper);padding:2px 6px;border-radius:4px">${code}</code>
+              — luput <strong style="color:${exCol}">${a.expiry}</strong>
+            </span>
+          </div>
+          <div id="pick-status-${a.batchId}"><span style="font-size:12px;color:var(--grey)">⬜ Belum disahkan</span></div>
+        </div>
+        ${scanInput('pick-scan-'+a.batchId,'Scan '+code,'onScanPick("'+a.batchId+'",scanVal)')}
+        ${DEMO_MODE?`<button class="btn btn-ghost btn-xs" style="font-size:11px;margin-top:2px" onclick="onScanPick('${a.batchId}','${code}')">Guna kod cadangan</button>`:''}
+      </div>`;
+    }).join('');
   }).join('');
-  openDlg(`<h3>📦 FEFO Allocation — ${o.id}</h3>
-<p style="color:var(--grey);margin-bottom:14px">Sistem akan mengambil stok mengikut tarikh luput terdekat.</p>
-<div class="tbl-wrap"><table>
-  <thead><tr><th>Produk</th><th>Qty Order</th><th>No. Batch</th><th>Expiry & Qty Ambil</th></tr></thead>
-  <tbody>${rows}</tbody>
-</table></div>
+
+  openDlg(`<h3>📦 Pengesahan FEFO — ${o.id}</h3>
+<p style="color:var(--grey);margin-bottom:14px">Scan kod batch dari setiap kotak untuk mengesahkan pengambilan stok.</p>
+${blocks}
 <div class="dlg-footer">
   <button class="btn btn-ghost" onclick="closeDlg()">Batal</button>
-  <button class="btn btn-primary" onclick="confirmB2bProcess('${o.id}')">Sahkan & Proses</button>
+  <button class="btn btn-primary" id="pick-process-btn" disabled onclick="confirmB2bProcess('${o.id}')">Proses Order</button>
 </div>`,true);
+
+  const firstPid=o.items[0]?.pid;
+  const firstAlloc=firstPid?allocateFEFO(firstPid,o.items[0].qty):null;
+  if(firstAlloc&&firstAlloc[0]) focusScan('pick-scan-'+firstAlloc[0].batchId);
+}
+
+function onScanPick(batchId,code){
+  const alloc=window._pickAllocs[batchId];if(!alloc)return;
+  const orderId=window._pickOrder;
+  const scanned=findBatchByCode(code);
+  const stEl=document.getElementById('pick-status-'+batchId);
+
+  if(!scanned){
+    logScan('pick',code,alloc.pid,'','notfound',orderId);
+    toast('❌ Kod batch tidak dikenali');
+    return;
+  }
+  if(expiryStatus(scanned.expiry)==='expired'){
+    logScan('pick',code,scanned.pid,scanned.batchNo,'expired',orderId);
+    if(stEl)stEl.innerHTML=`<div style="color:var(--red);font-size:12px">⛔ Batch ini telah luput pada ${scanned.expiry}</div>`;
+    return;
+  }
+  if(scanned.id===batchId){
+    logScan('pick',code,scanned.pid,scanned.batchNo,'ok',orderId);
+    window._pickConfirmed[batchId]=true;
+    if(stEl)stEl.innerHTML=`<div style="color:var(--green);font-size:12px;font-weight:600">✅ Batch disahkan</div>`;
+    toast('✅ Batch disahkan');
+    checkAllPickConfirmed();
+    return;
+  }
+  if(scanned.pid===alloc.pid){
+    if(scanned.expiry<alloc.expiry){
+      logScan('pick',code,scanned.pid,scanned.batchNo,'earlier',orderId);
+      window._pickConfirmed[batchId]=true;
+      window._pickAllocs[batchId]={...alloc,batchId:scanned.id,batchNo:scanned.batchNo,expiry:scanned.expiry};
+      if(stEl)stEl.innerHTML=`<div style="color:var(--orange);font-size:12px">⚠️ Batch ini luput lebih awal dari cadangan. Diterima.</div>`;
+      checkAllPickConfirmed();
+    } else {
+      logScan('pick',code,scanned.pid,scanned.batchNo,'blocked',orderId);
+      const exp=BATCHES.find(x=>x.id===batchId);
+      if(stEl)stEl.innerHTML=`<div style="color:var(--red);font-size:12px">⛔ Salah batch. Batch ini luput ${scanned.expiry}. Sila ambil <code style="background:var(--sand);padding:1px 5px">${exp?batchCode(exp):'batch betul'}</code> yang luput ${alloc.expiry} dahulu.</div>`;
+    }
+    return;
+  }
+  logScan('pick',code,scanned.pid,scanned.batchNo,'notfound',orderId);
+  toast('❌ Kod batch tidak dikenali');
+}
+
+function checkAllPickConfirmed(){
+  const allDone=Object.keys(window._pickAllocs).every(bid=>window._pickConfirmed[bid]);
+  const btn=document.getElementById('pick-process-btn');
+  if(btn)btn.disabled=!allDone;
 }
 
 async function confirmB2bProcess(id){
   const o=B2B_ORDERS.find(x=>x.id===id);if(!o)return;
-  o.status='process';
-  await saveB2BOrders();
+  await processB2bFEFO(o,window._pickAllocs);
   closeDlg();
-  buildSidebar();
-  navTo('hq-b2b-orders');
-  toast(`✓ Order ${id} diproses`);
 }
 
-async function processB2bFEFO(o){
-  for(const i of o.items){
-    const alloc=allocateFEFO(i.pid,i.qty);
-    if(!alloc){toast('❌ Stok batch tidak mencukupi untuk '+i.pid);return;}
-    for(const a of alloc){
+async function processB2bFEFO(o,confirmedAllocs){
+  if(confirmedAllocs&&Object.keys(confirmedAllocs).length){
+    for(const bid of Object.keys(confirmedAllocs)){
+      const a=confirmedAllocs[bid];
       const b=BATCHES.find(x=>x.id===a.batchId);
-      if(b) b.qty-=a.take;
+      if(b)b.qty-=a.take;
+      const p=PRODUCTS.find(x=>x.id===a.pid);
+      if(p)p.stock=totalStock(a.pid);
     }
-    const p=PRODUCTS.find(x=>x.id===i.pid);
-    if(p) p.stock=totalStock(i.pid);
+  }else{
+    for(const i of o.items){
+      const alloc=allocateFEFO(i.pid,i.qty);
+      if(!alloc){toast('❌ Stok batch tidak mencukupi untuk '+i.pid);return;}
+      for(const a of alloc){const b=BATCHES.find(x=>x.id===a.batchId);if(b)b.qty-=a.take;}
+      const p=PRODUCTS.find(x=>x.id===i.pid);
+      if(p)p.stock=totalStock(i.pid);
+    }
   }
   o.status='done';
   await Promise.all([saveB2BOrders(),saveProducts(),saveBatches()]);
@@ -1868,6 +2031,7 @@ function createGRN(poId){
     const pr=PRODUCTS.find(x=>x.id===i.pid);
     return `<div style="background:var(--sand);border-radius:var(--radius-sm);padding:12px;margin-bottom:10px">
       <div style="font-weight:600;margin-bottom:8px">${pr?pr.emoji+' '+pr.name:i.pid} — ${i.qty+(i.foc||0)} unit</div>
+      ${scanInput('grn-scan-'+i.pid,'Scan batch untuk '+( pr?pr.name:i.pid)+' (pilihan)','onScanGRN("'+poId+'","'+i.pid+'",scanVal)')}
       <div class="form-row">
         <div class="fld"><label>No. Batch</label><input id="grn_batch_${i.pid}" placeholder="cth: BT-2026-001" value="BT-${new Date().getFullYear()}-${Math.floor(Math.random()*900+100)}"></div>
         <div class="fld"><label>Tarikh Luput</label><input id="grn_expiry_${i.pid}" type="date" value="${new Date(Date.now()+365*24*60*60*1000).toISOString().slice(0,10)}"></div>
@@ -1875,12 +2039,13 @@ function createGRN(poId){
     </div>`;
   }).join('');
   openDlg(`<h3>✅ Buat GRN — ${poId}</h3>
-<p style="color:var(--grey);margin-bottom:16px">Masukkan no. batch dan tarikh luput untuk setiap item.</p>
+<p style="color:var(--grey);margin-bottom:16px">Scan batch sedia ada untuk auto-isi, atau isi manual untuk batch baru.</p>
 ${itemsHtml}
 <div class="dlg-footer">
   <button class="btn btn-ghost" onclick="closeDlg()">Batal</button>
   <button class="btn btn-primary" onclick="doCreateGRN('${poId}')">Sahkan GRN</button>
 </div>`,true);
+  focusScan('grn-scan-'+po.items[0]?.pid);
 }
 
 async function doCreateGRN(poId){
@@ -1906,6 +2071,26 @@ async function doCreateGRN(poId){
   navTo('hq-grn');
   const totalFoc=po.items.reduce((s,i)=>s+(i.foc||0),0);
   toast(`✓ GRN ${grn.id} dibuat. Stok & batch dikemaskini.${totalFoc>0?' (+'+totalFoc+' unit FOC termasuk)':''}`);
+}
+
+function onScanGRN(poId,pid,code){
+  const scanned=findBatchByCode(code);
+  if(!scanned){
+    logScan('grn',code,pid,'','notfound',poId);
+    toast('❌ Kod batch tidak dikenali');
+    return;
+  }
+  if(scanned.pid===pid){
+    const bEl=document.getElementById('grn_batch_'+pid);
+    const eEl=document.getElementById('grn_expiry_'+pid);
+    if(bEl)bEl.value=scanned.batchNo;
+    if(eEl)eEl.value=scanned.expiry;
+    logScan('grn',code,pid,scanned.batchNo,'ok',poId);
+    toast('✅ Batch ditemui — no. batch & tarikh luput diisi');
+  }else{
+    logScan('grn',code,scanned.pid,scanned.batchNo,'notfound',poId);
+    toast('⚠️ Kod batch ini bukan untuk produk ini');
+  }
 }
 
 function pageHqGRN(){
