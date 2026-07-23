@@ -760,7 +760,13 @@ function seedPOs(){
 }
 function seedGRNs(){
   return [
-    {id:'GRN-001',poRef:'PO-001',supplier:'PharmaCo Supply Sdn Bhd',date:'2026-06-25',items:[{pid:'P001',qty:50},{pid:'P002',qty:30}],receivedBy:'Ahmad Fadzil'},
+    {id:'GRN-001',poRef:'PO-001',supplierId:'SUP001',supplierName:'PharmaCo Supply Sdn Bhd',
+     grnDate:'2026-06-25',doNo:'DO-2026-001',invNo:'INV-2026-001',creditTerm:'Net 30',
+     items:[
+       {pid:'P001',qtyOrdered:50,qty:50,foc:0,unitPrice:15.00,discPct:0,discAmt:0,subtotal:750.00,batchNo:'LOT2026-A1',expiry:'2026-10-01'},
+       {pid:'P002',qtyOrdered:30,qty:30,foc:0,unitPrice:25.00,discPct:0,discAmt:0,subtotal:750.00,batchNo:'LOT2026-B1',expiry:'2027-03-15'},
+     ],
+     subtotal:1500.00,discAmt:0,total:1500.00,receivedBy:'Ahmad Fadzil',status:'posted'},
   ];
 }
 
@@ -933,7 +939,7 @@ const SYNC_KEYS={
   oh_b2b_orders: ['hq-dashboard','hq-b2b-orders','b2b-myorders','b2b-shop'],
   oh_b2c_orders: ['hq-dashboard','hq-b2c-orders','b2c-orders','b2c-store'],
   oh_pos:        ['hq-po','sup-po','sup-dashboard','sup-delivery'],
-  oh_grns:       ['hq-grn'],
+  oh_grns:       ['hq-grn','hq-po'],
   oh_products:   ['hq-catalog','b2b-order','b2c-store','sup-products'],
   oh_batches:    ['hq-batches','hq-catalog','hq-dashboard'],
   oh_scanlog:    ['hq-scanlog'],
@@ -1176,6 +1182,7 @@ function logout(){
 
 // ===== CONFIRM DIALOG =====
 let _confirmCb=null;
+let _grnRidCounter=0;
 function showConfirm(title,msg,okLabel,cb){
   _confirmCb=cb;
   document.getElementById('confirmTitle').textContent=title;
@@ -2131,8 +2138,9 @@ function pageHqPO(){
           <td><div style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn btn-ghost btn-xs" onclick="viewPO('${po.id}')">Lihat</button>
             <button class="btn btn-ghost btn-xs" onclick="printPO('${po.id}')" title="Cetak PO">🖨️</button>
-            ${po.status==='delivered'&&!GRNS.some(g=>g.poRef===po.id)?`<button class="btn btn-green btn-xs" onclick="createGRN('${po.id}')">Buat GRN</button>`:''}
-            ${GRNS.some(g=>g.poRef===po.id)?`<span style="font-size:11px;color:var(--green);font-weight:600">✓ GRN dibuat</span>`:''}
+            ${po.status==='confirmed'?`<button class="btn btn-ghost btn-xs" onclick="markPoDelivered('${po.id}')">Tanda Dihantar</button>`:''}
+            ${(po.status==='confirmed'||po.status==='delivered')&&!GRNS.some(g=>g.poRef===po.id&&g.status==='posted')?(()=>{const d=GRNS.find(g=>g.poRef===po.id&&g.status==='draft');return d?`<button class="btn btn-green btn-xs" onclick="showGrnForm('${po.id}','${d.id}')">Edit Draf GRN</button>`:`<button class="btn btn-green btn-xs" onclick="showGrnForm('${po.id}',null)">Buat GRN</button>`;})():''}
+            ${GRNS.some(g=>g.poRef===po.id&&g.status==='posted')?`<span style="font-size:11px;color:var(--green);font-weight:600">✓ GRN Selesai</span>`:''}
           </div></td>
         </tr>`;
       }).join('')}
@@ -2234,90 +2242,327 @@ td{padding:8px 10px;border:1px solid #dde3ee;vertical-align:middle}
   w.document.close();
 }
 
-function createGRN(poId){
-  const po=POS.find(x=>x.id===poId);if(!po)return;
-  if(GRNS.some(g=>g.poRef===poId)){toast('GRN untuk PO ini sudah wujud');return;}
-  const itemsHtml=po.items.map(i=>{
-    const pr=PRODUCTS.find(x=>x.id===i.pid);
-    return `<div style="background:var(--sand);border-radius:var(--radius-sm);padding:12px;margin-bottom:10px">
-      <div style="font-weight:600;margin-bottom:8px">${pr?pr.emoji+' '+pr.name:i.pid} — ${i.qty+(i.foc||0)} unit</div>
-      ${scanInput('grn-scan-'+i.pid,'Scan batch untuk '+( pr?pr.name:i.pid)+' (pilihan)','onScanGRN("'+poId+'","'+i.pid+'",scanVal)')}
-      <div class="form-row">
-        <div class="fld"><label>No. Batch</label><input id="grn_batch_${i.pid}" placeholder="cth: BT-2026-001" value="BT-${new Date().getFullYear()}-${Math.floor(Math.random()*900+100)}"></div>
-        <div class="fld"><label>Tarikh Luput</label><input id="grn_expiry_${i.pid}" type="date" value="${new Date(Date.now()+365*24*60*60*1000).toISOString().slice(0,10)}"></div>
-      </div>
-    </div>`;
-  }).join('');
-  openDlg(`<h3>✅ Buat GRN — ${poId}</h3>
-<p style="color:var(--grey);margin-bottom:16px">Scan batch sedia ada untuk auto-isi, atau isi manual untuk batch baru.</p>
-${itemsHtml}
-<div class="dlg-footer">
-  <button class="btn btn-ghost" onclick="closeDlg()">Batal</button>
-  <button class="btn btn-primary" onclick="doCreateGRN('${poId}')">Sahkan GRN</button>
-</div>`,true);
-  focusScan('grn-scan-'+po.items[0]?.pid);
+function calcGrnSubtotal(qty,unitPrice,discPct,discAmt){
+  const gross=qty*unitPrice;
+  const afterPct=gross-(gross*(discPct/100));
+  return Math.max(0,afterPct-discAmt);
 }
 
-async function doCreateGRN(poId){
-  const po=POS.find(x=>x.id===poId);if(!po)return;
-  for(const i of po.items){
-    const batchNo=document.getElementById('grn_batch_'+i.pid)?.value?.trim();
-    const expiry=document.getElementById('grn_expiry_'+i.pid)?.value;
-    if(!batchNo||!expiry){toast('❌ Sila isi no. batch dan tarikh luput untuk semua item');return;}
-  }
-  const grn={id:uid('GRN'),poRef:poId,supplier:po.supplier,date:today(),items:po.items.map(i=>({...i})),receivedBy:SESSION.name};
-  GRNS.push(grn);
-  po.items.forEach(i=>{
-    const batchNo=document.getElementById('grn_batch_'+i.pid)?.value?.trim();
-    const expiry=document.getElementById('grn_expiry_'+i.pid)?.value;
-    const totalQty=i.qty+(i.foc||0);
-    const batch={id:uid('BTH'),pid:i.pid,batchNo,qty:totalQty,qtyReceived:totalQty,expiry,grnRef:grn.id,received:today()};
-    BATCHES.push(batch);
-    const p=PRODUCTS.find(x=>x.id===i.pid);
-    if(p) p.stock += totalQty;
+function calcGrnRow(rid){
+  const qty=parseFloat(document.getElementById('grn_qty_'+rid)?.value)||0;
+  const up=parseFloat(document.getElementById('grn_up_'+rid)?.value)||0;
+  const dp=parseFloat(document.getElementById('grn_dp_'+rid)?.value)||0;
+  const da=parseFloat(document.getElementById('grn_da_'+rid)?.value)||0;
+  const el=document.getElementById('grn_sub_'+rid);
+  if(el) el.textContent=fmtRM(calcGrnSubtotal(qty,up,dp,da));
+  updateGrnTotals();
+}
+
+function updateGrnTotals(){
+  let subtotal=0;
+  document.querySelectorAll('#grnFormTbody tr[data-rowid]').forEach(tr=>{
+    const rid=tr.getAttribute('data-rowid');
+    const qty=parseFloat(document.getElementById('grn_qty_'+rid)?.value)||0;
+    const up=parseFloat(document.getElementById('grn_up_'+rid)?.value)||0;
+    const dp=parseFloat(document.getElementById('grn_dp_'+rid)?.value)||0;
+    const da=parseFloat(document.getElementById('grn_da_'+rid)?.value)||0;
+    subtotal+=calcGrnSubtotal(qty,up,dp,da);
   });
-  await Promise.all([saveGRNs(),saveProducts(),saveBatches()]);
-  closeDlg();
-  navTo('hq-grn');
-  const totalFoc=po.items.reduce((s,i)=>s+(i.foc||0),0);
-  toast(`✓ GRN ${grn.id} dibuat. Stok & batch dikemaskini.${totalFoc>0?' (+'+totalFoc+' unit FOC termasuk)':''}`);
+  const disc=parseFloat(document.getElementById('grn_total_disc')?.value)||0;
+  const stEl=document.getElementById('grn_total_sub');
+  const ttEl=document.getElementById('grn_total_amt');
+  if(stEl) stEl.textContent=fmtRM(subtotal);
+  if(ttEl) ttEl.textContent=fmtRM(Math.max(0,subtotal-disc));
 }
 
-function onScanGRN(poId,pid,code){
+function removeGrnRow(rid){
+  const tr=document.querySelector('#grnFormTbody tr[data-rowid="'+rid+'"]');
+  if(tr) tr.remove();
+  updateGrnTotals();
+}
+
+function buildGrnRowCells(rid,pid,qtyOrdered,item){
+  const pr=PRODUCTS.find(x=>x.id===pid)||{};
+  const qty=item?.qty??qtyOrdered;
+  const foc=item?.foc??0;
+  const up=item?.unitPrice??0;
+  const dp=item?.discPct??0;
+  const da=item?.discAmt??0;
+  const batchNo=item?.batchNo||'';
+  const expiry=item?.expiry||'';
+  return `
+    <td style="white-space:nowrap;min-width:160px">${pr.emoji||''} ${pr.name||pid}</td>
+    <td style="text-align:center;white-space:nowrap">${qtyOrdered}</td>
+    <td style="min-width:70px"><input id="grn_qty_${rid}" type="number" min="0" value="${qty}" style="width:65px;text-align:center" onchange="calcGrnRow('${rid}')"></td>
+    <td style="min-width:65px"><input id="grn_foc_${rid}" type="number" min="0" value="${foc}" style="width:60px;text-align:center"></td>
+    <td style="min-width:90px"><input id="grn_up_${rid}" type="number" min="0" step="0.01" value="${up.toFixed(2)}" style="width:85px;text-align:right" onchange="calcGrnRow('${rid}')"></td>
+    <td style="min-width:70px"><input id="grn_dp_${rid}" type="number" min="0" max="100" step="0.01" value="${dp}" style="width:65px;text-align:right" onchange="calcGrnRow('${rid}')"></td>
+    <td style="min-width:85px"><input id="grn_da_${rid}" type="number" min="0" step="0.01" value="${da.toFixed(2)}" style="width:80px;text-align:right" onchange="calcGrnRow('${rid}')"></td>
+    <td id="grn_sub_${rid}" style="text-align:right;font-weight:600;white-space:nowrap;min-width:90px">${fmtRM(calcGrnSubtotal(qty,up,dp,da))}</td>
+    <td style="min-width:120px"><input id="grn_batch_${rid}" placeholder="No. Batch" value="${batchNo}" style="width:115px"></td>
+    <td style="min-width:110px"><input id="grn_expiry_${rid}" type="date" value="${expiry}" style="width:105px"></td>
+    <td style="text-align:center"><button class="btn btn-ghost btn-xs" onclick="removeGrnRow('${rid}')" title="Buang">✕</button></td>`;
+}
+
+function addGrnExtraRow(){
+  const tbody=document.getElementById('grnFormTbody');if(!tbody)return;
+  const rid='r'+(++_grnRidCounter);
+  const pidOpts=PRODUCTS.map(p=>`<option value="${p.id}">${p.emoji} ${p.name}</option>`).join('');
+  const tr=document.createElement('tr');
+  tr.setAttribute('data-rowid',rid);
+  tr.setAttribute('data-pid','');
+  tr.setAttribute('data-qtyordered','0');
+  tr.innerHTML=`<td colspan="11" style="padding:8px">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <select id="grn_extpid_${rid}" style="flex:1;min-width:160px">
+        <option value="">-- Pilih Produk --</option>${pidOpts}
+      </select>
+      <button class="btn btn-ghost btn-xs" onclick="applyGrnExtraRow('${rid}')">Tambah</button>
+    </div></td>`;
+  tbody.appendChild(tr);
+}
+
+function applyGrnExtraRow(rid){
+  const sel=document.getElementById('grn_extpid_'+rid);if(!sel)return;
+  const pid=sel.value;if(!pid){toast('Sila pilih produk');return;}
+  const tr=document.querySelector('#grnFormTbody tr[data-rowid="'+rid+'"]');if(!tr)return;
+  tr.setAttribute('data-pid',pid);
+  tr.setAttribute('data-qtyordered','0');
+  tr.innerHTML=buildGrnRowCells(rid,pid,0,null);
+}
+
+function onScanGrnForm(rid,code){
   const scanned=findBatchByCode(code);
-  if(!scanned){
-    logScan('grn',code,pid,'','notfound',poId);
-    toast('❌ Kod batch tidak dikenali');
+  if(!scanned){toast('❌ Kod batch tidak dikenali');return;}
+  const bEl=document.getElementById('grn_batch_'+rid);
+  const eEl=document.getElementById('grn_expiry_'+rid);
+  if(bEl) bEl.value=scanned.batchNo;
+  if(eEl) eEl.value=scanned.expiry;
+  toast('✅ Batch ditemui');
+}
+
+function collectGrnFormData(){
+  const doNo=document.getElementById('grn_doNo')?.value?.trim()||'';
+  const invNo=document.getElementById('grn_invNo')?.value?.trim()||'';
+  const grnDate=document.getElementById('grn_date')?.value||today();
+  const creditTerm=document.getElementById('grn_term')?.value?.trim()||'';
+  const discAmt=parseFloat(document.getElementById('grn_total_disc')?.value)||0;
+  const rows=[];
+  document.querySelectorAll('#grnFormTbody tr[data-rowid]').forEach(tr=>{
+    const rid=tr.getAttribute('data-rowid');
+    const pid=tr.getAttribute('data-pid');
+    if(!pid) return;
+    const qtyOrdered=parseInt(tr.getAttribute('data-qtyordered'))||0;
+    const qty=parseFloat(document.getElementById('grn_qty_'+rid)?.value)||0;
+    const foc=parseFloat(document.getElementById('grn_foc_'+rid)?.value)||0;
+    const unitPrice=parseFloat(document.getElementById('grn_up_'+rid)?.value)||0;
+    const discPct=parseFloat(document.getElementById('grn_dp_'+rid)?.value)||0;
+    const discAmtRow=parseFloat(document.getElementById('grn_da_'+rid)?.value)||0;
+    const batchNo=document.getElementById('grn_batch_'+rid)?.value?.trim()||'';
+    const expiry=document.getElementById('grn_expiry_'+rid)?.value||'';
+    rows.push({pid,qtyOrdered,qty,foc,unitPrice,discPct,discAmt:discAmtRow,subtotal:calcGrnSubtotal(qty,unitPrice,discPct,discAmtRow),batchNo,expiry});
+  });
+  const subtotal=rows.reduce((s,r)=>s+r.subtotal,0);
+  return {doNo,invNo,grnDate,creditTerm,rows,discAmt,subtotal,total:Math.max(0,subtotal-discAmt)};
+}
+
+function validateGrn(data,draft){
+  if(!draft&&!data.doNo){toast('❌ No. D/O diperlukan sebelum sahkan');return false;}
+  if(!data.rows.length){toast('❌ Tiada item dalam GRN');return false;}
+  if(!draft){
+    for(const r of data.rows){
+      if(r.qty<=0) continue;
+      if(!r.batchNo){toast('❌ No. Batch diperlukan untuk '+pname(r.pid));return false;}
+      if(!r.expiry){toast('❌ Tarikh luput diperlukan untuk '+pname(r.pid));return false;}
+      if(r.expiry<=today()){toast('❌ Tarikh luput mesti akan datang untuk '+pname(r.pid));return false;}
+    }
+  }
+  return true;
+}
+
+function showGrnStep1(){
+  const postedRefs=new Set(GRNS.filter(g=>g.status==='posted').map(g=>g.poRef));
+  const draftMap={};
+  GRNS.filter(g=>g.status==='draft').forEach(g=>{draftMap[g.poRef]=g.id;});
+  const eligible=POS.filter(p=>p.status==='confirmed'||p.status==='delivered');
+  if(!eligible.length){
+    openDlg(`<h3>📋 Buat GRN Baru</h3><div class="empty-state"><div class="empty-icon">📦</div><h4>Tiada PO layak</h4><p>GRN boleh dibuat untuk PO berstatus Disahkan atau Dihantar</p></div><div class="dlg-footer"><button class="btn btn-ghost" onclick="closeDlg()">Tutup</button></div>`,true);
     return;
   }
-  if(scanned.pid===pid){
-    const bEl=document.getElementById('grn_batch_'+pid);
-    const eEl=document.getElementById('grn_expiry_'+pid);
-    if(bEl)bEl.value=scanned.batchNo;
-    if(eEl)eEl.value=scanned.expiry;
-    logScan('grn',code,pid,scanned.batchNo,'ok',poId);
-    toast('✅ Batch ditemui — no. batch & tarikh luput diisi');
+  const rows=eligible.map(po=>{
+    const isPosted=postedRefs.has(po.id);
+    const draftId=draftMap[po.id];
+    let btn='';
+    if(isPosted) btn=`<span style="font-size:11px;color:var(--green);font-weight:600">✓ GRN Selesai</span>`;
+    else if(draftId) btn=`<button class="btn btn-ghost btn-xs" onclick="closeDlg();showGrnForm('${po.id}','${draftId}')">Edit Draf</button>`;
+    else btn=`<button class="btn btn-primary btn-xs" onclick="closeDlg();showGrnForm('${po.id}',null)">Buat GRN</button>`;
+    return `<tr>
+      <td style="font-weight:700">${po.id}</td><td style="font-size:13px">${po.supplier}</td>
+      <td>${po.date}</td><td>${statusPill(po.status)}</td>
+      <td>${po.items.length} item</td><td style="font-family:Sora">${fmtRM(po.total)}</td>
+      <td>${btn}</td></tr>`;
+  }).join('');
+  openDlg(`<h3>📋 Buat GRN Baru — Pilih PO</h3>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>No. PO</th><th>Pembekal</th><th>Tarikh</th><th>Status</th><th>Item</th><th>Nilai</th><th></th></tr></thead>
+  <tbody>${rows}</tbody>
+</table></div>
+<div class="dlg-footer"><button class="btn btn-ghost" onclick="closeDlg()">Tutup</button></div>`,true);
+}
+
+function showGrnForm(poId,grnId){
+  const po=POS.find(x=>x.id===poId);if(!po)return;
+  const draft=grnId?GRNS.find(x=>x.id===grnId&&x.status==='draft'):null;
+  _grnRidCounter=0;
+  const sup=SUPPLIERS.find(s=>s.name===po.supplier)||{};
+  const tbody=po.items.map(item=>{
+    const rid='r'+(++_grnRidCounter);
+    const draftItem=draft?.items?.find(x=>x.pid===item.pid)||null;
+    const qtyOrdered=(item.qty||0)+(item.foc||0);
+    return `<tr data-rowid="${rid}" data-pid="${item.pid}" data-qtyordered="${qtyOrdered}">${buildGrnRowCells(rid,item.pid,qtyOrdered,draftItem)}</tr>`;
+  }).join('');
+  const doNo=draft?.doNo||'';
+  const invNo=draft?.invNo||'';
+  const grnDate=draft?.grnDate||today();
+  const creditTerm=draft?.creditTerm||sup.terms||'';
+  const discAmt=draft?.discAmt||0;
+  const subtotal=draft?.subtotal||po.total||0;
+  const total=draft?.total||po.total||0;
+  openDlg(`<h3>📦 ${draft?'Edit Draf GRN':'GRN Baru'} — ${poId}</h3>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;font-size:13px">
+  <div class="fld"><label>No. D/O <span style="color:red">*</span></label><input id="grn_doNo" placeholder="cth: DO-2026-001" value="${doNo}"></div>
+  <div class="fld"><label>No. Invois</label><input id="grn_invNo" placeholder="cth: INV-2026-001" value="${invNo}"></div>
+  <div class="fld"><label>Tarikh GRN</label><input id="grn_date" type="date" value="${grnDate}"></div>
+  <div class="fld"><label>Pembekal</label><input value="${po.supplier}" disabled></div>
+  <div class="fld"><label>Terma Kredit</label><input id="grn_term" placeholder="cth: Net 30" value="${creditTerm}"></div>
+</div>
+<div style="overflow-x:auto;margin-bottom:12px">
+<table>
+  <thead><tr>
+    <th style="min-width:160px">Produk</th>
+    <th style="text-align:center;min-width:60px">Qty PO</th>
+    <th style="text-align:center;min-width:70px">Qty Terima</th>
+    <th style="text-align:center;min-width:55px">FOC</th>
+    <th style="text-align:right;min-width:90px">Harga/Unit (RM)</th>
+    <th style="text-align:right;min-width:70px">Disc %</th>
+    <th style="text-align:right;min-width:85px">Disc RM</th>
+    <th style="text-align:right;min-width:90px">Subtotal</th>
+    <th style="min-width:120px">No. Batch <span style="color:red">*</span></th>
+    <th style="min-width:110px">T. Luput <span style="color:red">*</span></th>
+    <th></th>
+  </tr></thead>
+  <tbody id="grnFormTbody">${tbody}</tbody>
+</table>
+</div>
+<div style="display:flex;justify-content:flex-end;align-items:center;gap:16px;font-size:13px;flex-wrap:wrap;margin-bottom:12px">
+  <button class="btn btn-ghost btn-xs" onclick="addGrnExtraRow()">+ Tambah Baris</button>
+  <span>Jumlah Kecil: <b id="grn_total_sub">${fmtRM(subtotal)}</b></span>
+  <span>Diskaun: RM <input id="grn_total_disc" type="number" min="0" step="0.01" value="${discAmt.toFixed(2)}" style="width:80px;text-align:right" onchange="updateGrnTotals()"></span>
+  <span>JUMLAH: <b id="grn_total_amt" style="font-size:15px;color:var(--navy)">${fmtRM(total)}</b></span>
+</div>
+<div class="dlg-footer">
+  <button class="btn btn-ghost" onclick="closeDlg()">Batal</button>
+  <button class="btn btn-ghost" onclick="saveGrnDraft('${poId}','${grnId||''}')">💾 Simpan Draf</button>
+  <button class="btn btn-primary" onclick="postGRN('${poId}','${grnId||''}')">✅ Sahkan & Kemaskini Stok</button>
+</div>`,true);
+  updateGrnTotals();
+}
+
+async function saveGrnDraft(poId,grnId){
+  const data=collectGrnFormData();if(!data)return;
+  if(!validateGrn(data,true))return;
+  const po=POS.find(x=>x.id===poId);if(!po)return;
+  const existing=grnId?GRNS.find(x=>x.id===grnId):null;
+  if(existing){
+    Object.assign(existing,{doNo:data.doNo,invNo:data.invNo,grnDate:data.grnDate,
+      creditTerm:data.creditTerm,items:data.rows,subtotal:data.subtotal,discAmt:data.discAmt,total:data.total});
+    await saveGRNs();
+    closeDlg();navTo('hq-grn');
+    toast('💾 Draf '+existing.id+' disimpan');
   }else{
-    logScan('grn',code,scanned.pid,scanned.batchNo,'notfound',poId);
-    toast('⚠️ Kod batch ini bukan untuk produk ini');
+    const grn={id:uid('GRN'),poRef:poId,supplierId:SUPPLIERS.find(s=>s.name===po.supplier)?.id||'',
+      supplierName:po.supplier,doNo:data.doNo,invNo:data.invNo,grnDate:data.grnDate,
+      creditTerm:data.creditTerm,items:data.rows,subtotal:data.subtotal,discAmt:data.discAmt,
+      total:data.total,receivedBy:SESSION.name,status:'draft'};
+    GRNS.push(grn);
+    await saveGRNs();
+    closeDlg();navTo('hq-grn');
+    toast('💾 Draf '+grn.id+' disimpan');
   }
+}
+
+function postGRN(poId,grnId){
+  const data=collectGrnFormData();if(!data)return;
+  if(!validateGrn(data,false))return;
+  const po=POS.find(x=>x.id===poId);if(!po)return;
+  const qtyWarnings=data.rows.filter(r=>{
+    const pi=po.items.find(i=>i.pid===r.pid);
+    return pi&&r.qty!==(pi.qty+(pi.foc||0));
+  });
+  if(qtyWarnings.length){
+    showConfirm('⚠️ Kuantiti Berbeza','Kuantiti diterima berbeza dari PO untuk: '+qtyWarnings.map(r=>pname(r.pid)).join(', ')+'. Teruskan?','Ya, Sahkan',()=>doPostGRN(poId,grnId,data));
+  }else{
+    doPostGRN(poId,grnId,data);
+  }
+}
+
+async function doPostGRN(poId,grnId,data){
+  const po=POS.find(x=>x.id===poId);if(!po)return;
+  const existing=grnId?GRNS.find(x=>x.id===grnId):null;
+  const grnIdFinal=existing?existing.id:uid('GRN');
+  const grn={id:grnIdFinal,poRef:poId,supplierId:SUPPLIERS.find(s=>s.name===po.supplier)?.id||'',
+    supplierName:po.supplier,doNo:data.doNo,invNo:data.invNo,grnDate:data.grnDate,
+    creditTerm:data.creditTerm,items:data.rows,subtotal:data.subtotal,discAmt:data.discAmt,
+    total:data.total,receivedBy:SESSION.name,status:'posted'};
+  if(existing){GRNS[GRNS.indexOf(existing)]=grn;}else{GRNS.push(grn);}
+  data.rows.forEach(r=>{
+    if(r.qty<=0&&r.foc<=0) return;
+    const totalQty=r.qty+r.foc;
+    BATCHES.push({id:uid('BTH'),pid:r.pid,batchNo:r.batchNo,qty:totalQty,qtyReceived:totalQty,
+      expiry:r.expiry,grnRef:grnIdFinal,received:data.grnDate||today()});
+    const p=PRODUCTS.find(x=>x.id===r.pid);
+    if(p) p.stock+=totalQty;
+  });
+  if(po.status==='confirmed') po.status='delivered';
+  await Promise.all([saveGRNs(),saveProducts(),saveBatches(),savePOs()]);
+  closeDlg();navTo('hq-grn');
+  toast('✅ GRN '+grnIdFinal+' disahkan. Stok & batch dikemaskini.');
+}
+
+function editGRN(id){
+  const g=GRNS.find(x=>x.id===id);
+  if(!g||g.status!=='draft'){toast('Hanya draf boleh diedit');return;}
+  showGrnForm(g.poRef,id);
 }
 
 function pageHqGRN(){
-  return `<div class="page-head"><h2>✅ Goods Received Notes (GRN)</h2><p>Rekod penerimaan barangan dari pembekal</p></div>
+  const filter=window._grnFilter||'all';
+  const shown=filter==='all'?GRNS:GRNS.filter(g=>g.status===filter);
+  const tabs={all:'Semua',draft:'Draf',posted:'Selesai'};
+  const tabHtml=Object.entries(tabs).map(([k,v])=>`<button class="${filter===k?'on':''}" onclick="window._grnFilter='${k}';navTo('hq-grn')">${v}</button>`).join('');
+  return `<div class="page-head">
+  <div><h2>✅ Goods Received Notes (GRN)</h2><p>Rekod penerimaan barangan dari pembekal</p></div>
+  <button class="btn btn-primary" onclick="showGrnStep1()">+ GRN Baru</button>
+</div>
 <div class="card">
+  <div class="tabs" style="margin-bottom:16px">${tabHtml}</div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>No. GRN</th><th>Rujukan PO</th><th>Pembekal</th><th>Tarikh Terima</th><th>Diterima Oleh</th><th>Item</th><th></th></tr></thead>
+    <thead><tr><th>No. GRN</th><th>Rujukan PO</th><th>Pembekal</th><th>No. D/O</th><th>Tarikh GRN</th><th>Nilai (RM)</th><th>Status</th><th></th></tr></thead>
     <tbody>
-      ${GRNS.length?GRNS.map(g=>`<tr>
+      ${shown.length?shown.map(g=>`<tr>
         <td style="font-weight:700">${g.id}</td>
         <td>${g.poRef}</td>
-        <td>${g.supplier}</td>
-        <td>${g.date}</td>
-        <td>${g.receivedBy}</td>
-        <td>${g.items.length} item</td>
-        <td><button class="btn btn-ghost btn-xs" onclick="viewGRN('${g.id}')">Lihat</button></td>
-      </tr>`).join(''):`<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📋</div><h4>Belum ada GRN</h4><p>GRN akan dibuat selepas PO ditanda 'Dihantar'</p></div></td></tr>`}
+        <td style="font-size:13px">${g.supplierName||g.supplier||''}</td>
+        <td>${g.doNo||'—'}</td>
+        <td>${g.grnDate||g.date||''}</td>
+        <td style="font-weight:700;font-family:Sora">${fmtRM(g.total||0)}</td>
+        <td>${statusPill(g.status||'posted')}</td>
+        <td><div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-xs" onclick="viewGRN('${g.id}')">Lihat</button>
+          ${g.status==='draft'?`<button class="btn btn-ghost btn-xs" onclick="editGRN('${g.id}')">Edit</button>`:''}
+          <button class="btn btn-ghost btn-xs" onclick="printGRN('${g.id}')" title="Cetak">🖨️</button>
+        </div></td>
+      </tr>`).join(''):`<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📋</div><h4>Tiada GRN${filter!=='all'?' dalam kategori ini':''}</h4><p>Klik '+ GRN Baru' untuk mulakan</p></div></td></tr>`}
     </tbody>
   </table></div>
 </div>`;
@@ -2325,33 +2570,125 @@ function pageHqGRN(){
 
 function viewGRN(id){
   const g=GRNS.find(x=>x.id===id);if(!g)return;
-  const hasFoc=g.items.some(i=>i.foc>0);
-  openDlg(`<h3>✅ ${g.id}</h3>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;font-size:13px">
-  <div><b>Rujukan PO:</b> ${g.poRef}</div><div><b>Pembekal:</b> ${g.supplier}</div>
-  <div><b>Tarikh Terima:</b> ${g.date}</div><div><b>Diterima Oleh:</b> ${g.receivedBy}</div>
+  const isDraft=g.status==='draft';
+  openDlg(`<h3>📦 ${g.id} ${statusPill(g.status||'posted')}</h3>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;font-size:13px">
+  <div><b>Rujukan PO:</b> ${g.poRef}</div>
+  <div><b>No. D/O:</b> ${g.doNo||'—'}</div>
+  <div><b>No. Invois:</b> ${g.invNo||'—'}</div>
+  <div><b>Pembekal:</b> ${g.supplierName||g.supplier||''}</div>
+  <div><b>Tarikh GRN:</b> ${g.grnDate||g.date||''}</div>
+  <div><b>Terma Kredit:</b> ${g.creditTerm||'—'}</div>
+  <div><b>Diterima Oleh:</b> ${g.receivedBy||''}</div>
 </div>
+<div style="overflow-x:auto">
 <table><thead><tr>
   <th>Produk</th>
-  <th style="text-align:center">Qty Beli</th>
+  <th style="text-align:center">Qty PO</th>
+  <th style="text-align:center">Qty Terima</th>
   <th style="text-align:center;color:var(--green)">FOC</th>
-  <th style="text-align:center">Jumlah Terima</th>
+  <th style="text-align:right">Harga/Unit</th>
+  <th style="text-align:right">Disc %</th>
+  <th style="text-align:right">Disc RM</th>
+  <th style="text-align:right">Subtotal</th>
+  <th>No. Batch</th>
+  <th>T. Luput</th>
 </tr></thead>
-<tbody>${g.items.map(i=>{
+<tbody>${(g.items||[]).map(i=>{
   const foc=i.foc||0;
-  const total=i.qty+foc;
   return `<tr>
     <td>${pemoji(i.pid)} ${pname(i.pid)}</td>
+    <td style="text-align:center">${i.qtyOrdered??i.qty}</td>
     <td style="text-align:center;font-weight:600">${i.qty}</td>
-    <td style="text-align:center">
-      ${foc>0?`<span style="background:var(--green-l);color:var(--green);padding:2px 8px;border-radius:10px;font-weight:700;font-size:12px">+${foc}</span>`
-             :`<span style="color:var(--line)">—</span>`}
-    </td>
-    <td style="text-align:center;font-weight:700;color:var(--navy)">${total}</td>
+    <td style="text-align:center">${foc>0?`<span style="background:var(--green-l);color:var(--green);padding:2px 8px;border-radius:10px;font-weight:700;font-size:12px">+${foc}</span>`:`<span style="color:var(--line)">—</span>`}</td>
+    <td style="text-align:right">${fmtRM(i.unitPrice||0)}</td>
+    <td style="text-align:right">${i.discPct??0}%</td>
+    <td style="text-align:right">${fmtRM(i.discAmt||0)}</td>
+    <td style="text-align:right;font-weight:600">${fmtRM(i.subtotal||0)}</td>
+    <td>${i.batchNo||'—'}</td>
+    <td>${i.expiry||'—'}</td>
   </tr>`;
-}).join('')}</tbody></table>
-${hasFoc?`<div style="font-size:12px;color:var(--green);margin-top:10px;background:var(--green-l);padding:8px 12px;border-radius:8px">✓ Stok telah dikemaskini termasuk kuantiti FOC dari pembekal</div>`:''}
-<div class="dlg-footer"><button class="btn btn-ghost" onclick="closeDlg()">Tutup</button></div>`,true);
+}).join('')}</tbody></table></div>
+<div style="text-align:right;margin-top:10px;font-size:13px">
+  <span style="margin-right:20px">Jumlah Kecil: <b>${fmtRM(g.subtotal||0)}</b></span>
+  <span style="margin-right:20px">Diskaun: <b>${fmtRM(g.discAmt||0)}</b></span>
+  <span>JUMLAH: <b style="font-size:16px;color:var(--navy)">${fmtRM(g.total||0)}</b></span>
+</div>
+<div class="dlg-footer">
+  ${isDraft?`<button class="btn btn-ghost" onclick="closeDlg();editGRN('${g.id}')">Edit Draf</button>`:''}
+  <button class="btn btn-ghost" onclick="closeDlg()">Tutup</button>
+  <button class="btn btn-ghost" onclick="printGRN('${g.id}')">🖨️ Cetak</button>
+</div>`,true);
+}
+
+function printGRN(id){
+  const g=GRNS.find(x=>x.id===id);if(!g)return;
+  const sup=SUPPLIERS.find(s=>s.name===(g.supplierName||g.supplier))||{};
+  const w=window.open('','_blank');if(!w)return;
+  const itemRows=(g.items||[]).map((i,idx)=>`<tr>
+    <td>${idx+1}</td><td>${pemoji(i.pid)} ${pname(i.pid)}</td>
+    <td style="text-align:center">${i.qty}</td>
+    <td style="text-align:center">${(i.foc||0)||'—'}</td>
+    <td style="text-align:right">${(i.unitPrice||0).toFixed(2)}</td>
+    <td style="text-align:right">${i.discPct??0}%</td>
+    <td style="text-align:right">${(i.discAmt||0).toFixed(2)}</td>
+    <td style="text-align:right;font-weight:700">${(i.subtotal||0).toFixed(2)}</td>
+    <td>${i.batchNo||'—'}</td><td>${i.expiry||'—'}</td>
+  </tr>`).join('');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>GRN ${g.id}</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:12px;padding:20mm 15mm;color:#000}
+.co{font-size:18px;font-weight:700;margin-bottom:2px}.doc-title{font-size:16px;font-weight:700;text-align:center;margin:14px 0 10px;text-transform:uppercase;letter-spacing:1px}
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:6px 20px;font-size:12px;margin-bottom:14px}.lbl{color:#555;font-size:11px}
+table{width:100%;border-collapse:collapse;margin-bottom:12px}th,td{border:1px solid #333;padding:5px 7px;font-size:11px}th{background:#eee;font-weight:700}
+.tot{text-align:right;font-size:13px;margin-top:8px}.tot td{border:none;padding:2px 6px}
+.sig-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:30px;margin-top:30px}
+.sig{text-align:center;font-size:11px}.sig-line{border-top:1px solid #333;margin-top:35px;margin-bottom:4px}
+@media print{body{padding:15mm 12mm}}</style></head><body>
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+  <div><div class="co">OrcaHub Sdn Bhd</div><div style="font-size:11px;color:#555">Sistem Pengurusan Farmasi</div></div>
+  <div style="text-align:right;font-size:11px"><div><b>No. GRN: ${g.id}</b></div><div>Rujukan PO: ${g.poRef}</div><div>Tarikh: ${g.grnDate||g.date||''}</div></div>
+</div>
+<div class="doc-title">Nota Penerimaan Barangan (GRN)</div>
+<div class="meta">
+  <div><div class="lbl">Pembekal</div><div style="font-weight:700">${g.supplierName||g.supplier||''}</div>${sup.address?`<div style="font-size:11px;color:#555">${sup.address}</div>`:''}</div>
+  <div>
+    <div><span class="lbl">No. D/O: </span>${g.doNo||'—'}</div>
+    <div><span class="lbl">No. Invois: </span>${g.invNo||'—'}</div>
+    <div><span class="lbl">Terma Kredit: </span>${g.creditTerm||'—'}</div>
+    <div><span class="lbl">Diterima Oleh: </span>${g.receivedBy||''}</div>
+    <div><span class="lbl">Status: </span>${g.status==='posted'?'Selesai':'Draf'}</div>
+  </div>
+</div>
+<table><thead><tr>
+  <th style="width:28px">Bil</th><th>Produk</th>
+  <th style="text-align:center;width:50px">Qty</th><th style="text-align:center;width:40px">FOC</th>
+  <th style="text-align:right;width:80px">Harga/Unit</th><th style="text-align:right;width:50px">Disc%</th>
+  <th style="text-align:right;width:65px">Disc RM</th><th style="text-align:right;width:80px">Subtotal</th>
+  <th style="width:95px">No. Batch</th><th style="width:80px">T. Luput</th>
+</tr></thead><tbody>${itemRows}</tbody></table>
+<table class="tot" style="width:auto;margin-left:auto">
+  <tr><td>Jumlah Kecil:</td><td style="font-weight:600">RM ${(g.subtotal||0).toFixed(2)}</td></tr>
+  <tr><td>Diskaun:</td><td>RM ${(g.discAmt||0).toFixed(2)}</td></tr>
+  <tr><td style="font-weight:700;font-size:14px">JUMLAH BAYARAN:</td><td style="font-weight:700;font-size:14px">RM ${(g.total||0).toFixed(2)}</td></tr>
+</table>
+<div class="sig-row">
+  <div class="sig"><div class="sig-line"></div><div>Disediakan oleh</div></div>
+  <div class="sig"><div class="sig-line"></div><div>Disemak oleh (HQ)</div></div>
+  <div class="sig"><div class="sig-line"></div><div>Pengesahan Pembekal</div></div>
+</div>
+<script>window.onload=function(){window.print();window.onafterprint=function(){window.close();}}<\/script>
+</body></html>`);
+  w.document.close();
+}
+
+function markPoDelivered(poId){
+  const po=POS.find(x=>x.id===poId);if(!po||po.status!=='confirmed')return;
+  showConfirm('Tanda Dihantar','Tandakan PO '+poId+' sebagai sudah dihantar oleh pembekal?','Ya, Dihantar',async()=>{
+    po.status='delivered';
+    await savePOs();
+    navTo('hq-po');
+    toast('✓ PO '+poId+' ditanda Dihantar');
+  });
 }
 
 function pageHqB2cOrders(){
