@@ -1122,7 +1122,7 @@ function navTo(page){
   buildSidebar();
   renderPage();
   const labels={'sa-dashboard':'Dashboard','sa-tenants':'Tenants','sa-plans':'Subscription Plans','sa-analytics':'Analytics',
-    'hq-dashboard':'Dashboard','hq-b2b-orders':'Order B2B','hq-catalog':'Katalog','hq-batches':'Batch & Expiry','hq-scanlog':'Log Scan','hq-suppliers':'Pembekal','hq-po':'Purchase Orders','hq-grn':'GRN','hq-b2c-orders':'Order B2C','hq-analytics':'Analitik',
+    'hq-dashboard':'Dashboard','hq-b2b-orders':'Order B2B','hq-catalog':'Katalog','hq-batches':'Batch & Expiry','hq-scanlog':'Log Scan','hq-suppliers':'Pembekal','hq-po':'Purchase Orders','hq-grn':'GRN','hq-grn-form':'Borang GRN','hq-b2c-orders':'Order B2C','hq-analytics':'Analitik',
     'b2b-shop':'Dashboard','b2b-order':'Order Baru','b2b-myorders':'Order Saya',
     'b2c-store':'Kedai','b2c-cart':'Troli','b2c-orders':'Order Saya',
     'sup-dashboard':'Dashboard','sup-products':'Produk Saya','sup-po':'Incoming PO','sup-delivery':'Penghantaran',
@@ -1183,6 +1183,7 @@ function logout(){
 // ===== CONFIRM DIALOG =====
 let _confirmCb=null;
 let _grnRidCounter=0;
+let _grnCtx={poId:'',grnId:''};
 function showConfirm(title,msg,okLabel,cb){
   _confirmCb=cb;
   document.getElementById('confirmTitle').textContent=title;
@@ -1219,6 +1220,7 @@ function renderPage(){
   else if(pg==='hq-suppliers')c.innerHTML=pageHqSuppliers();
   else if(pg==='hq-po')       c.innerHTML=pageHqPO();
   else if(pg==='hq-grn')      c.innerHTML=pageHqGRN();
+  else if(pg==='hq-grn-form'){c.innerHTML=pageHqGrnForm();updateGrnTotals();}
   else if(pg==='hq-b2c-orders')c.innerHTML=pageHqB2cOrders();
   else if(pg==='hq-analytics')c.innerHTML=pageHqAnalytics();
   else if(pg==='b2b-shop')    c.innerHTML=pageB2bDashboard();
@@ -1595,7 +1597,7 @@ function pageHqBatches(){
 // STEP 4: HQ B2B Orders, Catalog, Suppliers, PO, GRN
 // ============================================================
 function statusPill(s){
-  const map={new:'p-new Baru',process:'p-process Diproses',done:'p-done Selesai',cancel:'p-cancel Batal',pending:'p-pending Belum Sahkan',confirmed:'p-process Disahkan',delivered:'p-done Dihantar'};
+  const map={new:'p-new Baru',process:'p-process Diproses',done:'p-done Selesai',cancel:'p-cancel Batal',pending:'p-pending Belum Sahkan',confirmed:'p-process Disahkan',partial:'p-new Separa Terima',delivered:'p-done Dihantar'};
   const [cls,lbl]=(map[s]||'p-pending '+s).split(' ');
   return `<span class="pill ${cls}">${lbl}</span>`;
 }
@@ -2134,13 +2136,16 @@ function pageHqPO(){
               ?`<span style="background:var(--green-l);color:var(--green);padding:3px 8px;border-radius:10px;font-weight:700;font-size:12px;font-family:Sora">+${totalFoc} unit</span>`
               :`<span style="color:var(--line)">—</span>`}
           </td>
-          <td>${statusPill(po.status)}</td>
+          <td>
+            ${statusPill(po.status)}
+            ${po.status==='partial'?`<div style="font-size:11px;color:var(--grey);margin-top:3px">${po.items.reduce((s,i)=>s+(i.qtyReceived||0),0)}/${po.items.reduce((s,i)=>s+i.qty,0)} unit diterima</div>`:''}
+          </td>
           <td><div style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn btn-ghost btn-xs" onclick="viewPO('${po.id}')">Lihat</button>
             <button class="btn btn-ghost btn-xs" onclick="printPO('${po.id}')" title="Cetak PO">🖨️</button>
             ${po.status==='confirmed'?`<button class="btn btn-ghost btn-xs" onclick="markPoDelivered('${po.id}')">Tanda Dihantar</button>`:''}
-            ${(po.status==='confirmed'||po.status==='delivered')&&!GRNS.some(g=>g.poRef===po.id&&g.status==='posted')?(()=>{const d=GRNS.find(g=>g.poRef===po.id&&g.status==='draft');return d?`<button class="btn btn-green btn-xs" onclick="showGrnForm('${po.id}','${d.id}')">Edit Draf GRN</button>`:`<button class="btn btn-green btn-xs" onclick="showGrnForm('${po.id}',null)">Buat GRN</button>`;})():''}
-            ${GRNS.some(g=>g.poRef===po.id&&g.status==='posted')?`<span style="font-size:11px;color:var(--green);font-weight:600">✓ GRN Selesai</span>`:''}
+            ${(po.status==='confirmed'||po.status==='partial')?(()=>{const d=GRNS.find(g=>g.poRef===po.id&&g.status==='draft');return d?`<button class="btn btn-green btn-xs" onclick="showGrnForm('${po.id}','${d.id}')">Edit Draf GRN</button>`:`<button class="btn btn-green btn-xs" onclick="showGrnForm('${po.id}',null)">Buat GRN</button>`;})():''}
+            ${po.status==='delivered'?`<span style="font-size:11px;color:var(--green);font-weight:600">✓ GRN Selesai</span>`:''}
           </div></td>
         </tr>`;
       }).join('')}
@@ -2281,23 +2286,27 @@ function removeGrnRow(rid){
   updateGrnTotals();
 }
 
-function buildGrnRowCells(rid,pid,qtyOrdered,item){
+function buildGrnRowCells(rid,pid,qtyPO,qtyRcv,item){
   const pr=PRODUCTS.find(x=>x.id===pid)||{};
-  const qty=item?.qty??qtyOrdered;
+  const baki=Math.max(0,qtyPO-qtyRcv);
+  const qty=item?.qty??baki;
   const foc=item?.foc??0;
   const up=item?.unitPrice??0;
   const dp=item?.discPct??0;
   const da=item?.discAmt??0;
   const batchNo=item?.batchNo||'';
   const expiry=item?.expiry||'';
+  const bakiStyle=baki===0&&qtyPO>0?'color:var(--green);font-weight:700':'';
   return `
     <td style="white-space:nowrap;min-width:160px">${pr.emoji||''} ${pr.name||pid}</td>
-    <td style="text-align:center;white-space:nowrap">${qtyOrdered}</td>
-    <td style="min-width:70px"><input id="grn_qty_${rid}" type="number" min="0" value="${qty}" style="width:65px;text-align:center" onchange="calcGrnRow('${rid}')"></td>
-    <td style="min-width:65px"><input id="grn_foc_${rid}" type="number" min="0" value="${foc}" style="width:60px;text-align:center"></td>
+    <td style="text-align:center">${qtyPO||'—'}</td>
+    <td style="text-align:center;color:var(--green);font-weight:600">${qtyRcv||'—'}</td>
+    <td style="text-align:center;${bakiStyle}">${baki||'—'}</td>
+    <td style="min-width:80px"><input id="grn_qty_${rid}" type="number" min="0" value="${qty}" style="width:75px;text-align:center" onchange="calcGrnRow('${rid}')"></td>
+    <td style="min-width:55px"><input id="grn_foc_${rid}" type="number" min="0" value="${foc}" style="width:50px;text-align:center"></td>
     <td style="min-width:90px"><input id="grn_up_${rid}" type="number" min="0" step="0.01" value="${up.toFixed(2)}" style="width:85px;text-align:right" onchange="calcGrnRow('${rid}')"></td>
-    <td style="min-width:70px"><input id="grn_dp_${rid}" type="number" min="0" max="100" step="0.01" value="${dp}" style="width:65px;text-align:right" onchange="calcGrnRow('${rid}')"></td>
-    <td style="min-width:85px"><input id="grn_da_${rid}" type="number" min="0" step="0.01" value="${da.toFixed(2)}" style="width:80px;text-align:right" onchange="calcGrnRow('${rid}')"></td>
+    <td style="min-width:65px"><input id="grn_dp_${rid}" type="number" min="0" max="100" step="0.01" value="${dp}" style="width:60px;text-align:right" onchange="calcGrnRow('${rid}')"></td>
+    <td style="min-width:80px"><input id="grn_da_${rid}" type="number" min="0" step="0.01" value="${da.toFixed(2)}" style="width:75px;text-align:right" onchange="calcGrnRow('${rid}')"></td>
     <td id="grn_sub_${rid}" style="text-align:right;font-weight:600;white-space:nowrap;min-width:90px">${fmtRM(calcGrnSubtotal(qty,up,dp,da))}</td>
     <td style="min-width:120px"><input id="grn_batch_${rid}" placeholder="No. Batch" value="${batchNo}" style="width:115px"></td>
     <td style="min-width:110px"><input id="grn_expiry_${rid}" type="date" value="${expiry}" style="width:105px"></td>
@@ -2311,8 +2320,9 @@ function addGrnExtraRow(){
   const tr=document.createElement('tr');
   tr.setAttribute('data-rowid',rid);
   tr.setAttribute('data-pid','');
-  tr.setAttribute('data-qtyordered','0');
-  tr.innerHTML=`<td colspan="11" style="padding:8px">
+  tr.setAttribute('data-qtypo','0');
+  tr.setAttribute('data-qtyrcv','0');
+  tr.innerHTML=`<td colspan="13" style="padding:8px">
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <select id="grn_extpid_${rid}" style="flex:1;min-width:160px">
         <option value="">-- Pilih Produk --</option>${pidOpts}
@@ -2327,8 +2337,9 @@ function applyGrnExtraRow(rid){
   const pid=sel.value;if(!pid){toast('Sila pilih produk');return;}
   const tr=document.querySelector('#grnFormTbody tr[data-rowid="'+rid+'"]');if(!tr)return;
   tr.setAttribute('data-pid',pid);
-  tr.setAttribute('data-qtyordered','0');
-  tr.innerHTML=buildGrnRowCells(rid,pid,0,null);
+  tr.setAttribute('data-qtypo','0');
+  tr.setAttribute('data-qtyrcv','0');
+  tr.innerHTML=buildGrnRowCells(rid,pid,0,0,null);
 }
 
 function onScanGrnForm(rid,code){
@@ -2352,7 +2363,8 @@ function collectGrnFormData(){
     const rid=tr.getAttribute('data-rowid');
     const pid=tr.getAttribute('data-pid');
     if(!pid) return;
-    const qtyOrdered=parseInt(tr.getAttribute('data-qtyordered'))||0;
+    const qtyPO=parseInt(tr.getAttribute('data-qtypo'))||0;
+    const qtyRcv=parseInt(tr.getAttribute('data-qtyrcv'))||0;
     const qty=parseFloat(document.getElementById('grn_qty_'+rid)?.value)||0;
     const foc=parseFloat(document.getElementById('grn_foc_'+rid)?.value)||0;
     const unitPrice=parseFloat(document.getElementById('grn_up_'+rid)?.value)||0;
@@ -2360,7 +2372,7 @@ function collectGrnFormData(){
     const discAmtRow=parseFloat(document.getElementById('grn_da_'+rid)?.value)||0;
     const batchNo=document.getElementById('grn_batch_'+rid)?.value?.trim()||'';
     const expiry=document.getElementById('grn_expiry_'+rid)?.value||'';
-    rows.push({pid,qtyOrdered,qty,foc,unitPrice,discPct,discAmt:discAmtRow,subtotal:calcGrnSubtotal(qty,unitPrice,discPct,discAmtRow),batchNo,expiry});
+    rows.push({pid,qtyOrdered:qtyPO,qtyAlreadyRcv:qtyRcv,qty,foc,unitPrice,discPct,discAmt:discAmtRow,subtotal:calcGrnSubtotal(qty,unitPrice,discPct,discAmtRow),batchNo,expiry});
   });
   const subtotal=rows.reduce((s,r)=>s+r.subtotal,0);
   return {doNo,invNo,grnDate,creditTerm,rows,discAmt,subtotal,total:Math.max(0,subtotal-discAmt)};
@@ -2381,24 +2393,25 @@ function validateGrn(data,draft){
 }
 
 function showGrnStep1(){
-  const postedRefs=new Set(GRNS.filter(g=>g.status==='posted').map(g=>g.poRef));
   const draftMap={};
   GRNS.filter(g=>g.status==='draft').forEach(g=>{draftMap[g.poRef]=g.id;});
-  const eligible=POS.filter(p=>p.status==='confirmed'||p.status==='delivered');
+  const eligible=POS.filter(p=>p.status==='confirmed'||p.status==='partial');
   if(!eligible.length){
-    openDlg(`<h3>📋 Buat GRN Baru</h3><div class="empty-state"><div class="empty-icon">📦</div><h4>Tiada PO layak</h4><p>GRN boleh dibuat untuk PO berstatus Disahkan atau Dihantar</p></div><div class="dlg-footer"><button class="btn btn-ghost" onclick="closeDlg()">Tutup</button></div>`,true);
+    openDlg(`<h3>📋 Buat GRN Baru</h3><div class="empty-state"><div class="empty-icon">📦</div><h4>Tiada PO layak</h4><p>GRN boleh dibuat untuk PO berstatus Disahkan atau Separa Terima</p></div><div class="dlg-footer"><button class="btn btn-ghost" onclick="closeDlg()">Tutup</button></div>`,true);
     return;
   }
   const rows=eligible.map(po=>{
-    const isPosted=postedRefs.has(po.id);
     const draftId=draftMap[po.id];
-    let btn='';
-    if(isPosted) btn=`<span style="font-size:11px;color:var(--green);font-weight:600">✓ GRN Selesai</span>`;
-    else if(draftId) btn=`<button class="btn btn-ghost btn-xs" onclick="closeDlg();showGrnForm('${po.id}','${draftId}')">Edit Draf</button>`;
-    else btn=`<button class="btn btn-primary btn-xs" onclick="closeDlg();showGrnForm('${po.id}',null)">Buat GRN</button>`;
+    const totalRcv=po.items.reduce((s,i)=>s+(i.qtyReceived||0),0);
+    const totalQty=po.items.reduce((s,i)=>s+i.qty,0);
+    const baliInfo=po.status==='partial'?`<div style="font-size:11px;color:var(--grey)">Diterima ${totalRcv}/${totalQty} unit</div>`:'';
+    const btn=draftId
+      ?`<button class="btn btn-ghost btn-xs" onclick="closeDlg();showGrnForm('${po.id}','${draftId}')">Edit Draf</button>`
+      :`<button class="btn btn-primary btn-xs" onclick="closeDlg();showGrnForm('${po.id}',null)">Buat GRN</button>`;
     return `<tr>
       <td style="font-weight:700">${po.id}</td><td style="font-size:13px">${po.supplier}</td>
-      <td>${po.date}</td><td>${statusPill(po.status)}</td>
+      <td>${po.date}</td>
+      <td>${statusPill(po.status)}${baliInfo}</td>
       <td>${po.items.length} item</td><td style="font-family:Sora">${fmtRM(po.total)}</td>
       <td>${btn}</td></tr>`;
   }).join('');
@@ -2411,61 +2424,84 @@ function showGrnStep1(){
 }
 
 function showGrnForm(poId,grnId){
-  const po=POS.find(x=>x.id===poId);if(!po)return;
+  _grnCtx={poId:poId||'',grnId:grnId||''};
+  navTo('hq-grn-form');
+}
+
+function pageHqGrnForm(){
+  const poId=_grnCtx.poId;
+  const grnId=_grnCtx.grnId;
+  const po=POS.find(x=>x.id===poId);
+  if(!po) return `<div class="page-head"><h2>📦 Borang GRN</h2></div><div class="card"><div class="empty-state"><div class="empty-icon">⚠️</div><h4>Tiada PO dipilih</h4><button class="btn btn-ghost" onclick="navTo('hq-grn')">← Kembali ke GRN</button></div></div>`;
   const draft=grnId?GRNS.find(x=>x.id===grnId&&x.status==='draft'):null;
   _grnRidCounter=0;
   const sup=SUPPLIERS.find(s=>s.name===po.supplier)||{};
   const tbody=po.items.map(item=>{
     const rid='r'+(++_grnRidCounter);
     const draftItem=draft?.items?.find(x=>x.pid===item.pid)||null;
-    const qtyOrdered=(item.qty||0)+(item.foc||0);
-    return `<tr data-rowid="${rid}" data-pid="${item.pid}" data-qtyordered="${qtyOrdered}">${buildGrnRowCells(rid,item.pid,qtyOrdered,draftItem)}</tr>`;
+    const qtyPO=item.qty||0;
+    const qtyRcv=item.qtyReceived||0;
+    return `<tr data-rowid="${rid}" data-pid="${item.pid}" data-qtypo="${qtyPO}" data-qtyrcv="${qtyRcv}">${buildGrnRowCells(rid,item.pid,qtyPO,qtyRcv,draftItem)}</tr>`;
   }).join('');
   const doNo=draft?.doNo||'';
   const invNo=draft?.invNo||'';
   const grnDate=draft?.grnDate||today();
   const creditTerm=draft?.creditTerm||sup.terms||'';
   const discAmt=draft?.discAmt||0;
-  const subtotal=draft?.subtotal||po.total||0;
-  const total=draft?.total||po.total||0;
-  openDlg(`<h3>📦 ${draft?'Edit Draf GRN':'GRN Baru'} — ${poId}</h3>
-<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;font-size:13px">
-  <div class="fld"><label>No. D/O <span style="color:red">*</span></label><input id="grn_doNo" placeholder="cth: DO-2026-001" value="${doNo}"></div>
-  <div class="fld"><label>No. Invois</label><input id="grn_invNo" placeholder="cth: INV-2026-001" value="${invNo}"></div>
-  <div class="fld"><label>Tarikh GRN</label><input id="grn_date" type="date" value="${grnDate}"></div>
-  <div class="fld"><label>Pembekal</label><input value="${po.supplier}" disabled></div>
-  <div class="fld"><label>Terma Kredit</label><input id="grn_term" placeholder="cth: Net 30" value="${creditTerm}"></div>
+  const subtotal=draft?.subtotal||0;
+  const total=draft?.total||0;
+  const title=draft?'Edit Draf GRN':'GRN Baru';
+  return `<div class="page-head">
+  <div>
+    <button class="btn btn-ghost btn-sm" onclick="navTo('hq-grn')" style="margin-bottom:8px">← Kembali ke GRN</button>
+    <h2>📦 ${title} — ${poId}</h2>
+    <p style="color:var(--grey)">${po.supplier} &nbsp;·&nbsp; ${po.date}${po.status==='partial'?' &nbsp;·&nbsp; <span style="color:var(--orange,#e67e22)">Penghantaran Separa</span>':''}</p>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-ghost" onclick="saveGrnDraft('${poId}','${grnId||''}')">💾 Simpan Draf</button>
+    <button class="btn btn-primary" onclick="postGRN('${poId}','${grnId||''}')">✅ Sahkan & Kemaskini Stok</button>
+  </div>
 </div>
-<div style="overflow-x:auto;margin-bottom:12px">
-<table>
-  <thead><tr>
-    <th style="min-width:160px">Produk</th>
-    <th style="text-align:center;min-width:60px">Qty PO</th>
-    <th style="text-align:center;min-width:70px">Qty Terima</th>
-    <th style="text-align:center;min-width:55px">FOC</th>
-    <th style="text-align:right;min-width:90px">Harga/Unit (RM)</th>
-    <th style="text-align:right;min-width:70px">Disc %</th>
-    <th style="text-align:right;min-width:85px">Disc RM</th>
-    <th style="text-align:right;min-width:90px">Subtotal</th>
-    <th style="min-width:120px">No. Batch <span style="color:red">*</span></th>
-    <th style="min-width:110px">T. Luput <span style="color:red">*</span></th>
-    <th></th>
-  </tr></thead>
-  <tbody id="grnFormTbody">${tbody}</tbody>
-</table>
+<div class="card">
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px">
+    <div class="fld"><label>No. D/O <span style="color:red">*</span></label><input id="grn_doNo" placeholder="cth: DO-2026-001" value="${doNo}"></div>
+    <div class="fld"><label>No. Invois</label><input id="grn_invNo" placeholder="cth: INV-2026-001" value="${invNo}"></div>
+    <div class="fld"><label>Tarikh GRN</label><input id="grn_date" type="date" value="${grnDate}"></div>
+    <div class="fld"><label>Pembekal</label><input value="${po.supplier}" disabled></div>
+    <div class="fld"><label>Terma Kredit</label><input id="grn_term" placeholder="cth: Net 30" value="${creditTerm}"></div>
+  </div>
+  <div style="overflow-x:auto">
+  <table>
+    <thead><tr>
+      <th style="min-width:160px">Produk</th>
+      <th style="text-align:center;min-width:65px">Qty PO</th>
+      <th style="text-align:center;min-width:75px">Sudah Terima</th>
+      <th style="text-align:center;min-width:60px">Baki</th>
+      <th style="text-align:center;min-width:85px">Qty Terima Kali Ini</th>
+      <th style="text-align:center;min-width:55px">FOC</th>
+      <th style="text-align:right;min-width:90px">Harga/Unit (RM)</th>
+      <th style="text-align:right;min-width:65px">Disc %</th>
+      <th style="text-align:right;min-width:80px">Disc RM</th>
+      <th style="text-align:right;min-width:90px">Subtotal</th>
+      <th style="min-width:120px">No. Batch <span style="color:red">*</span></th>
+      <th style="min-width:110px">T. Luput <span style="color:red">*</span></th>
+      <th></th>
+    </tr></thead>
+    <tbody id="grnFormTbody">${tbody}</tbody>
+  </table>
+  </div>
+  <div style="display:flex;justify-content:flex-end;align-items:center;gap:16px;font-size:13px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
+    <button class="btn btn-ghost btn-xs" onclick="addGrnExtraRow()">+ Tambah Baris</button>
+    <span>Jumlah Kecil: <b id="grn_total_sub">${fmtRM(subtotal)}</b></span>
+    <span>Diskaun: RM <input id="grn_total_disc" type="number" min="0" step="0.01" value="${discAmt.toFixed(2)}" style="width:80px;text-align:right" onchange="updateGrnTotals()"></span>
+    <span>JUMLAH: <b id="grn_total_amt" style="font-size:16px;color:var(--navy)">${fmtRM(total)}</b></span>
+  </div>
 </div>
-<div style="display:flex;justify-content:flex-end;align-items:center;gap:16px;font-size:13px;flex-wrap:wrap;margin-bottom:12px">
-  <button class="btn btn-ghost btn-xs" onclick="addGrnExtraRow()">+ Tambah Baris</button>
-  <span>Jumlah Kecil: <b id="grn_total_sub">${fmtRM(subtotal)}</b></span>
-  <span>Diskaun: RM <input id="grn_total_disc" type="number" min="0" step="0.01" value="${discAmt.toFixed(2)}" style="width:80px;text-align:right" onchange="updateGrnTotals()"></span>
-  <span>JUMLAH: <b id="grn_total_amt" style="font-size:15px;color:var(--navy)">${fmtRM(total)}</b></span>
-</div>
-<div class="dlg-footer">
-  <button class="btn btn-ghost" onclick="closeDlg()">Batal</button>
+<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;padding-bottom:24px">
+  <button class="btn btn-ghost" onclick="navTo('hq-grn')">← Kembali</button>
   <button class="btn btn-ghost" onclick="saveGrnDraft('${poId}','${grnId||''}')">💾 Simpan Draf</button>
   <button class="btn btn-primary" onclick="postGRN('${poId}','${grnId||''}')">✅ Sahkan & Kemaskini Stok</button>
-</div>`,true);
-  updateGrnTotals();
+</div>`;
 }
 
 async function saveGrnDraft(poId,grnId){
@@ -2477,7 +2513,7 @@ async function saveGrnDraft(poId,grnId){
     Object.assign(existing,{doNo:data.doNo,invNo:data.invNo,grnDate:data.grnDate,
       creditTerm:data.creditTerm,items:data.rows,subtotal:data.subtotal,discAmt:data.discAmt,total:data.total});
     await saveGRNs();
-    closeDlg();navTo('hq-grn');
+    navTo('hq-grn');
     toast('💾 Draf '+existing.id+' disimpan');
   }else{
     const grn={id:uid('GRN'),poRef:poId,supplierId:SUPPLIERS.find(s=>s.name===po.supplier)?.id||'',
@@ -2486,7 +2522,7 @@ async function saveGrnDraft(poId,grnId){
       total:data.total,receivedBy:SESSION.name,status:'draft'};
     GRNS.push(grn);
     await saveGRNs();
-    closeDlg();navTo('hq-grn');
+    navTo('hq-grn');
     toast('💾 Draf '+grn.id+' disimpan');
   }
 }
@@ -2494,13 +2530,18 @@ async function saveGrnDraft(poId,grnId){
 function postGRN(poId,grnId){
   const data=collectGrnFormData();if(!data)return;
   if(!validateGrn(data,false))return;
-  const po=POS.find(x=>x.id===poId);if(!po)return;
-  const qtyWarnings=data.rows.filter(r=>{
-    const pi=po.items.find(i=>i.pid===r.pid);
-    return pi&&r.qty!==(pi.qty+(pi.foc||0));
+  // Check if any paid qty exceeds remaining baki (FOC is exempt)
+  const overWarnings=data.rows.filter(r=>{
+    if(r.qty<=0) return false;
+    const baki=Math.max(0,r.qtyOrdered-r.qtyAlreadyRcv);
+    return r.qtyOrdered>0&&r.qty>baki;
   });
-  if(qtyWarnings.length){
-    showConfirm('⚠️ Kuantiti Berbeza','Kuantiti diterima berbeza dari PO untuk: '+qtyWarnings.map(r=>pname(r.pid)).join(', ')+'. Teruskan?','Ya, Sahkan',()=>doPostGRN(poId,grnId,data));
+  if(overWarnings.length){
+    const lines=overWarnings.map(r=>{
+      const baki=Math.max(0,r.qtyOrdered-r.qtyAlreadyRcv);
+      return `${pname(r.pid)} (terima: ${r.qty}, baki: ${baki})`;
+    }).join('\n');
+    showConfirm('⚠️ Melebihi Baki PO',lines+'\n\nTeruskan?','Ya, Sahkan',()=>doPostGRN(poId,grnId,data));
   }else{
     doPostGRN(poId,grnId,data);
   }
@@ -2515,18 +2556,29 @@ async function doPostGRN(poId,grnId,data){
     creditTerm:data.creditTerm,items:data.rows,subtotal:data.subtotal,discAmt:data.discAmt,
     total:data.total,receivedBy:SESSION.name,status:'posted'};
   if(existing){GRNS[GRNS.indexOf(existing)]=grn;}else{GRNS.push(grn);}
+  // Create batches, update stock, accumulate qtyReceived on PO items
   data.rows.forEach(r=>{
-    if(r.qty<=0&&r.foc<=0) return;
     const totalQty=r.qty+r.foc;
-    BATCHES.push({id:uid('BTH'),pid:r.pid,batchNo:r.batchNo,qty:totalQty,qtyReceived:totalQty,
-      expiry:r.expiry,grnRef:grnIdFinal,received:data.grnDate||today()});
-    const p=PRODUCTS.find(x=>x.id===r.pid);
-    if(p) p.stock+=totalQty;
+    if(totalQty>0){
+      BATCHES.push({id:uid('BTH'),pid:r.pid,batchNo:r.batchNo,qty:totalQty,qtyReceived:totalQty,
+        expiry:r.expiry,grnRef:grnIdFinal,received:data.grnDate||today()});
+      const p=PRODUCTS.find(x=>x.id===r.pid);
+      if(p) p.stock+=totalQty;
+    }
+    // Only paid qty (not FOC) counts toward PO completion
+    if(r.qty>0){
+      const poItem=po.items.find(x=>x.pid===r.pid);
+      if(poItem) poItem.qtyReceived=(poItem.qtyReceived||0)+r.qty;
+    }
   });
-  if(po.status==='confirmed') po.status='delivered';
+  // Determine new PO status based on cumulative qtyReceived
+  const allFull=po.items.every(i=>(i.qtyReceived||0)>=i.qty);
+  const anyRcv=po.items.some(i=>(i.qtyReceived||0)>0);
+  if(allFull) po.status='delivered';
+  else if(anyRcv) po.status='partial';
   await Promise.all([saveGRNs(),saveProducts(),saveBatches(),savePOs()]);
-  closeDlg();navTo('hq-grn');
-  toast('✅ GRN '+grnIdFinal+' disahkan. Stok & batch dikemaskini.');
+  navTo('hq-grn');
+  toast('✅ GRN '+grnIdFinal+' disahkan. Stok & batch dikemaskini.'+(allFull?' PO lengkap — status Dihantar.':' PO separa — boleh GRN lagi untuk baki.'));
 }
 
 function editGRN(id){
