@@ -1597,7 +1597,7 @@ function pageHqBatches(){
 // STEP 4: HQ B2B Orders, Catalog, Suppliers, PO, GRN
 // ============================================================
 function statusPill(s){
-  const map={new:'p-new Baru',process:'p-process Diproses',done:'p-done Selesai',cancel:'p-cancel Batal',pending:'p-pending Belum Sahkan',confirmed:'p-process Disahkan',partial:'p-new Separa Terima',delivered:'p-done Dihantar'};
+  const map={new:'p-new Baru',process:'p-process Diproses',done:'p-done Selesai',cancel:'p-cancel Batal',pending:'p-pending Belum Dihantar',confirmed:'p-process Menunggu Barang',partial:'p-new Separa Terima',delivered:'p-done Selesai'};
   const [cls,lbl]=(map[s]||'p-pending '+s).split(' ');
   return `<span class="pill ${cls}">${lbl}</span>`;
 }
@@ -2143,9 +2143,10 @@ function pageHqPO(){
           <td><div style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn btn-ghost btn-xs" onclick="viewPO('${po.id}')">Lihat</button>
             <button class="btn btn-ghost btn-xs" onclick="printPO('${po.id}')" title="Cetak PO">🖨️</button>
-            ${po.status==='confirmed'?`<button class="btn btn-ghost btn-xs" onclick="markPoDelivered('${po.id}')">Tanda Dihantar</button>`:''}
-            ${(po.status==='confirmed'||po.status==='partial')?(()=>{const d=GRNS.find(g=>g.poRef===po.id&&g.status==='draft');return d?`<button class="btn btn-green btn-xs" onclick="showGrnForm('${po.id}','${d.id}')">Edit Draf GRN</button>`:`<button class="btn btn-green btn-xs" onclick="showGrnForm('${po.id}',null)">Buat GRN</button>`;})():''}
-            ${po.status==='delivered'?`<span style="font-size:11px;color:var(--green);font-weight:600">✓ GRN Selesai</span>`:''}
+            ${po.status==='pending'?`<button class="btn btn-primary btn-xs" onclick="hqConfirmPO('${po.id}')">Hantar ke Pembekal</button>`:''}
+            ${po.status==='confirmed'?(()=>{const d=GRNS.find(g=>g.poRef===po.id&&g.status==='draft');return d?`<button class="btn btn-green btn-xs" onclick="showGrnForm('${po.id}','${d.id}')">Edit Draf GRN</button>`:`<button class="btn btn-green btn-xs" onclick="showGrnForm('${po.id}',null)">Terima Barang / GRN</button>`;})():''}
+            ${po.status==='partial'?(()=>{const d=GRNS.find(g=>g.poRef===po.id&&g.status==='draft');return d?`<button class="btn btn-green btn-xs" onclick="showGrnForm('${po.id}','${d.id}')">Edit Draf GRN</button>`:`<button class="btn btn-green btn-xs" onclick="showGrnForm('${po.id}',null)">Terima Baki / GRN</button>`;})():''}
+            ${po.status==='delivered'?`<span style="font-size:11px;color:var(--green);font-weight:600">✓ Selesai</span>`:''}
           </div></td>
         </tr>`;
       }).join('')}
@@ -2397,7 +2398,7 @@ function showGrnStep1(){
   GRNS.filter(g=>g.status==='draft').forEach(g=>{draftMap[g.poRef]=g.id;});
   const eligible=POS.filter(p=>p.status==='confirmed'||p.status==='partial');
   if(!eligible.length){
-    openDlg(`<h3>📋 Buat GRN Baru</h3><div class="empty-state"><div class="empty-icon">📦</div><h4>Tiada PO layak</h4><p>GRN boleh dibuat untuk PO berstatus Disahkan atau Separa Terima</p></div><div class="dlg-footer"><button class="btn btn-ghost" onclick="closeDlg()">Tutup</button></div>`,true);
+    openDlg(`<h3>📋 Buat GRN Baru</h3><div class="empty-state"><div class="empty-icon">📦</div><h4>Tiada PO layak</h4><p>GRN boleh dibuat untuk PO berstatus Menunggu Barang atau Separa Terima</p></div><div class="dlg-footer"><button class="btn btn-ghost" onclick="closeDlg()">Tutup</button></div>`,true);
     return;
   }
   const rows=eligible.map(po=>{
@@ -2740,6 +2741,16 @@ function markPoDelivered(poId){
     await savePOs();
     navTo('hq-po');
     toast('✓ PO '+poId+' ditanda Dihantar');
+  });
+}
+
+function hqConfirmPO(poId){
+  const po=POS.find(x=>x.id===poId);if(!po||po.status!=='pending')return;
+  showConfirm('Hantar ke Pembekal','PO '+poId+' akan ditandakan sebagai sudah dihantar kepada pembekal. Barang sedang dalam proses.','Ya, Sudah Dihantar',async()=>{
+    po.status='confirmed';
+    await savePOs();
+    navTo('hq-po');
+    toast('✓ PO '+poId+' — Menunggu Barang dari Pembekal');
   });
 }
 
