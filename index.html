@@ -74,6 +74,7 @@ img{max-width:100%}
 
 /* ===== CARDS ===== */
 .card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:18px}
+.card.grn-card-tall{min-height:calc(100vh - 220px);display:flex;flex-direction:column}
 .card-h{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
 .card-h h3{font-size:16px}
 .card-body{padding:20px}
@@ -2476,8 +2477,8 @@ function pageHqGrnForm(){
     <button class="btn btn-primary" onclick="postGRN('${poId}','${grnId||''}')">✅ Sahkan & Kemaskini Stok</button>
   </div>
 </div>
-<div class="card">
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px">
+<div class="card grn-card-tall">
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;padding-top:8px">
     <div class="fld"><label>No. D/O</label><input id="grn_doNo" placeholder="cth: DO-2026-001" value="${doNo}"></div>
     <div class="fld"><label>No. Invois</label><input id="grn_invNo" placeholder="cth: INV-2026-001" value="${invNo}"></div>
     <div class="fld"><label>Tarikh GRN</label><input id="grn_date" type="date" value="${grnDate}"></div>
