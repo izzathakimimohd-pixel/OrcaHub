@@ -2290,28 +2290,32 @@ function removeGrnRow(rid){
 function buildGrnRowCells(rid,pid,qtyPO,qtyRcv,item){
   const pr=PRODUCTS.find(x=>x.id===pid)||{};
   const baki=Math.max(0,qtyPO-qtyRcv);
-  const qty=item?.qty??baki;
-  const foc=item?.foc??0;
+  const isComplete=qtyPO>0&&baki===0;
+  const qty=isComplete?0:(item?.qty??baki);
+  const foc=isComplete?0:(item?.foc??0);
   const up=item?.unitPrice??0;
   const dp=item?.discPct??0;
   const da=item?.discAmt??0;
   const batchNo=item?.batchNo||'';
   const expiry=item?.expiry||'';
-  const bakiStyle=baki===0&&qtyPO>0?'color:var(--green);font-weight:700':'';
+  const dis=isComplete?'disabled':'';
+  const lockStyle=isComplete?'background:#f1f1f1;color:#999;cursor:not-allowed':'';
+  const bakiStyle=isComplete?'color:var(--green);font-weight:700':'';
+  const nameTag=isComplete?' <span style="font-size:10px;background:#e6f7ee;color:#0f6e56;padding:1px 7px;border-radius:10px;white-space:nowrap">✓ Lengkap</span>':'';
   return `
-    <td style="white-space:nowrap;min-width:160px">${pr.emoji||''} ${pr.name||pid}</td>
+    <td style="white-space:nowrap;min-width:150px">${pr.emoji||''} ${pr.name||pid}${nameTag}</td>
     <td style="text-align:center">${qtyPO||'—'}</td>
     <td style="text-align:center;color:var(--green);font-weight:600">${qtyRcv||'—'}</td>
-    <td style="text-align:center;${bakiStyle}">${baki||'—'}</td>
-    <td style="min-width:80px"><input id="grn_qty_${rid}" type="number" min="0" value="${qty}" style="width:75px;text-align:center" onchange="calcGrnRow('${rid}')"></td>
-    <td style="min-width:55px"><input id="grn_foc_${rid}" type="number" min="0" value="${foc}" style="width:50px;text-align:center"></td>
-    <td style="min-width:90px"><input id="grn_up_${rid}" type="number" min="0" step="0.01" value="${up.toFixed(2)}" style="width:85px;text-align:right" onchange="calcGrnRow('${rid}')"></td>
-    <td style="min-width:65px"><input id="grn_dp_${rid}" type="number" min="0" max="100" step="0.01" value="${dp}" style="width:60px;text-align:right" onchange="calcGrnRow('${rid}')"></td>
-    <td style="min-width:80px"><input id="grn_da_${rid}" type="number" min="0" step="0.01" value="${da.toFixed(2)}" style="width:75px;text-align:right" onchange="calcGrnRow('${rid}')"></td>
-    <td id="grn_sub_${rid}" style="text-align:right;font-weight:600;white-space:nowrap;min-width:90px">${fmtRM(calcGrnSubtotal(qty,up,dp,da))}</td>
-    <td style="min-width:120px"><input id="grn_batch_${rid}" placeholder="No. Batch" value="${batchNo}" style="width:115px"></td>
-    <td style="min-width:110px"><input id="grn_expiry_${rid}" type="date" value="${expiry}" style="width:105px"></td>
-    <td style="text-align:center"><button class="btn btn-ghost btn-xs" onclick="removeGrnRow('${rid}')" title="Buang">✕</button></td>`;
+    <td style="text-align:center;${bakiStyle}">${isComplete?'0':(baki||'—')}</td>
+    <td><input id="grn_qty_${rid}" type="number" min="0" value="${qty}" ${dis} style="width:70px;text-align:center;${lockStyle}" onchange="calcGrnRow('${rid}')"></td>
+    <td><input id="grn_foc_${rid}" type="number" min="0" value="${foc}" ${dis} style="width:48px;text-align:center;${lockStyle}"></td>
+    <td><input id="grn_up_${rid}" type="number" min="0" step="0.01" value="${up.toFixed(2)}" ${dis} style="width:80px;text-align:right;${lockStyle}" onchange="calcGrnRow('${rid}')"></td>
+    <td><input id="grn_dp_${rid}" type="number" min="0" max="100" step="0.01" value="${dp}" ${dis} style="width:55px;text-align:right;${lockStyle}" onchange="calcGrnRow('${rid}')"></td>
+    <td><input id="grn_da_${rid}" type="number" min="0" step="0.01" value="${da.toFixed(2)}" ${dis} style="width:70px;text-align:right;${lockStyle}" onchange="calcGrnRow('${rid}')"></td>
+    <td id="grn_sub_${rid}" style="text-align:right;font-weight:600;white-space:nowrap;min-width:85px">${fmtRM(calcGrnSubtotal(qty,up,dp,da))}</td>
+    <td><input id="grn_batch_${rid}" placeholder="No. Batch" value="${batchNo}" ${dis} style="width:105px;${lockStyle}"></td>
+    <td><input id="grn_expiry_${rid}" type="date" value="${expiry}" ${dis} style="width:100px;${lockStyle}"></td>
+    <td style="text-align:center">${isComplete?'':`<button class="btn btn-ghost btn-xs" onclick="removeGrnRow('${rid}')" title="Buang">✕</button>`}</td>`;
 }
 
 function addGrnExtraRow(){
@@ -2379,8 +2383,14 @@ function collectGrnFormData(){
   return {doNo,invNo,grnDate,creditTerm,rows,discAmt,subtotal,total:Math.max(0,subtotal-discAmt)};
 }
 
-function validateGrn(data,draft){
-  if(!draft&&!data.doNo){toast('❌ No. D/O diperlukan sebelum sahkan');return false;}
+function validateGrn(data,draft,currentGrnId){
+  if(!draft){
+    if(!data.doNo&&!data.invNo){toast('❌ Isi sekurang-kurangnya No. D/O atau No. Invois');return false;}
+    if(data.doNo){
+      const dup=GRNS.find(g=>g.id!==currentGrnId&&(g.doNo||'').trim()!==''&&(g.doNo||'').trim().toLowerCase()===data.doNo.trim().toLowerCase());
+      if(dup){toast('❌ No. D/O "'+data.doNo+'" sudah digunakan di '+dup.id+'. Sila semak semula.');return false;}
+    }
+  }
   if(!data.rows.length){toast('❌ Tiada item dalam GRN');return false;}
   if(!draft){
     for(const r of data.rows){
@@ -2465,7 +2475,7 @@ function pageHqGrnForm(){
 </div>
 <div class="card">
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px">
-    <div class="fld"><label>No. D/O <span style="color:red">*</span></label><input id="grn_doNo" placeholder="cth: DO-2026-001" value="${doNo}"></div>
+    <div class="fld"><label>No. D/O</label><input id="grn_doNo" placeholder="cth: DO-2026-001" value="${doNo}"></div>
     <div class="fld"><label>No. Invois</label><input id="grn_invNo" placeholder="cth: INV-2026-001" value="${invNo}"></div>
     <div class="fld"><label>Tarikh GRN</label><input id="grn_date" type="date" value="${grnDate}"></div>
     <div class="fld"><label>Pembekal</label><input value="${po.supplier}" disabled></div>
@@ -2507,7 +2517,7 @@ function pageHqGrnForm(){
 
 async function saveGrnDraft(poId,grnId){
   const data=collectGrnFormData();if(!data)return;
-  if(!validateGrn(data,true))return;
+  if(!validateGrn(data,true,grnId||null))return;
   const po=POS.find(x=>x.id===poId);if(!po)return;
   const existing=grnId?GRNS.find(x=>x.id===grnId):null;
   if(existing){
@@ -2530,7 +2540,7 @@ async function saveGrnDraft(poId,grnId){
 
 function postGRN(poId,grnId){
   const data=collectGrnFormData();if(!data)return;
-  if(!validateGrn(data,false))return;
+  if(!validateGrn(data,false,grnId||null))return;
   // Check if any paid qty exceeds remaining baki (FOC is exempt)
   const overWarnings=data.rows.filter(r=>{
     if(r.qty<=0) return false;
