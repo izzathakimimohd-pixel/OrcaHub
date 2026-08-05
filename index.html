@@ -226,6 +226,7 @@ tbody tr:hover td{background:var(--sand)}
 /* ===== MAIN CONTENT ===== */
 .main-area{flex:1;min-width:0}
 .wrap{max-width:1180px;margin:0 auto;padding:26px 22px 60px}
+.wrap.wrap-full{max-width:none}
 .page-head{margin-bottom:22px}
 .page-head h2{font-size:26px;margin-bottom:3px}
 .page-head p{color:var(--grey);font-size:14px}
@@ -1208,6 +1209,8 @@ document.getElementById('confirmDlg').addEventListener('click',function(e){if(e.
 function renderPage(){
   const pg=curPage;
   const c=document.getElementById('pageContent');
+  const wrapEl=document.querySelector('.wrap');
+  if(wrapEl){ if(pg==='hq-grn-form') wrapEl.classList.add('wrap-full'); else wrapEl.classList.remove('wrap-full'); }
   if(pg==='sa-dashboard')     c.innerHTML=pageSaDashboard();
   else if(pg==='sa-tenants')  c.innerHTML=pageSaTenants();
   else if(pg==='sa-plans')    c.innerHTML=pageSaPlans();
