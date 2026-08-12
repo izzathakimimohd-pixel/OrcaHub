@@ -1516,20 +1516,20 @@ function showPrintLabel(batchId){
   const p=PRODUCTS.find(x=>x.id===b.pid);
   const code=batchCode(b);
   const exCol=expiryStatus(b.expiry)==='expired'?'var(--red)':expiryStatus(b.expiry)==='critical'?'var(--orange)':'var(--green)';
-  openDlg(`<h3>🖨️ Label Batch</h3>
+  openDlg(`<h3>🖨️ Batch Label</h3>
 <div style="border:2px dashed var(--line);border-radius:var(--radius);padding:24px;text-align:center;margin-bottom:16px">
   <div style="font-size:16px;font-weight:700;margin-bottom:4px">${p?p.name:b.pid}</div>
   <div style="font-family:monospace;font-size:26px;font-weight:800;letter-spacing:3px;color:var(--navy);background:var(--sand);padding:12px 20px;border-radius:8px;margin:14px 0;display:inline-block;border:1px solid var(--line)">${code}</div>
   <div style="font-size:13px;color:var(--grey);line-height:2">
-    <div>No. Batch: <strong style="color:var(--ink)">${b.batchNo}</strong></div>
-    <div>Tarikh Luput: <strong style="color:${exCol}">${b.expiry}</strong> (${daysToExpiry(b.expiry)}h lagi)</div>
+    <div>Batch No.: <strong style="color:var(--ink)">${b.batchNo}</strong></div>
+    <div>Expiry: <strong style="color:${exCol}">${b.expiry}</strong> (${daysToExpiry(b.expiry)}d left)</div>
     <div>Qty: <strong style="color:var(--ink)">${b.qty} unit</strong></div>
   </div>
-  <div style="margin-top:14px;padding:8px 14px;background:var(--orange-l);border-radius:8px;font-size:11px;color:#9a5912;display:inline-block">📌 Cetak dan tampal pada kotak fizikal</div>
+  <div style="margin-top:14px;padding:8px 14px;background:var(--orange-l);border-radius:8px;font-size:11px;color:#9a5912;display:inline-block">📌 Print and attach to physical box</div>
 </div>
 <div class="dlg-footer">
-  <button class="btn btn-ghost" onclick="closeDlg()">Tutup</button>
-  <button class="btn btn-primary" onclick="window.print()">🖨️ Cetak</button>
+  <button class="btn btn-ghost" onclick="closeDlg()">Close</button>
+  <button class="btn btn-primary" onclick="window.print()">🖨️ Print</button>
 </div>`);
 }
 
@@ -1541,26 +1541,26 @@ function pageHqScanLog(){
   else if(tab==='blocked') rows=rows.filter(s=>['blocked','expired'].includes(s.result));
   rows.sort((a,b)=>b.ts.localeCompare(a.ts));
   const pillMap={ok:'p-done',earlier:'p-process',blocked:'p-cancel',expired:'p-cancel',notfound:'p-pending'};
-  const labelMap={ok:'Berjaya',earlier:'Awal Diterima',blocked:'Dihalang',expired:'Luput',notfound:'Tak Jumpa'};
+  const labelMap={ok:'Success',earlier:'Received Early',blocked:'Blocked',expired:'Expired',notfound:'Not Found'};
   const actionLabelMap={pick:'Picking',grn:'GRN',stocktake:'Stocktake',adjustment:'Adjustment'};
   const actionPillMap={pick:'p-process',grn:'p-done',stocktake:'p-process',adjustment:'p-new'};
-  return `<div class="page-head"><h2>📋 Log Scan</h2><p>Rekod audit semua percubaan scan batch — untuk keperluan GDPMD</p></div>
+  return `<div class="page-head"><h2>📋 Scan Log</h2><p>Audit record of all batch scan attempts — for GDPMD compliance</p></div>
 <div class="card">
   <div class="card-h">
-    <h3>Log Scan (${rows.length})</h3>
+    <h3>Scan Log (${rows.length})</h3>
     <div style="display:flex;gap:8px">
-      <button class="btn btn-sm ${tab==='all'?'btn-primary':'btn-ghost'}" onclick="window._scanLogTab='all';navTo('hq-scanlog')">Semua</button>
-      <button class="btn btn-sm ${tab==='ok'?'btn-primary':'btn-ghost'}" onclick="window._scanLogTab='ok';navTo('hq-scanlog')">Berjaya</button>
-      <button class="btn btn-sm ${tab==='blocked'?'btn-primary':'btn-ghost'}" onclick="window._scanLogTab='blocked';navTo('hq-scanlog')">Dihalang</button>
+      <button class="btn btn-sm ${tab==='all'?'btn-primary':'btn-ghost'}" onclick="window._scanLogTab='all';navTo('hq-scanlog')">All</button>
+      <button class="btn btn-sm ${tab==='ok'?'btn-primary':'btn-ghost'}" onclick="window._scanLogTab='ok';navTo('hq-scanlog')">Success</button>
+      <button class="btn btn-sm ${tab==='blocked'?'btn-primary':'btn-ghost'}" onclick="window._scanLogTab='blocked';navTo('hq-scanlog')">Blocked</button>
     </div>
   </div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Masa</th><th>Pengguna</th><th>Action</th><th>Kod Discan</th><th>No. Batch</th><th>Keputusan</th><th>Rujukan</th></tr></thead>
+    <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Scanned Code</th><th>Batch No.</th><th>Result</th><th>Reference</th></tr></thead>
     <tbody>
       ${rows.length?rows.map(s=>{
         const rowBg=['blocked','expired'].includes(s.result)?'background:var(--red-l)':s.result==='earlier'?'background:var(--orange-l)':s.result==='ok'?'background:var(--green-l)':'';
         return`<tr style="${rowBg}">
-          <td style="font-size:12px;white-space:nowrap">${new Date(s.ts).toLocaleString('ms-MY',{dateStyle:'short',timeStyle:'short'})}</td>
+          <td style="font-size:12px;white-space:nowrap">${new Date(s.ts).toLocaleString('en-MY',{dateStyle:'short',timeStyle:'short'})}</td>
           <td>${s.user}</td>
           <td><span class="pill ${actionPillMap[s.action]||'p-done'}">${actionLabelMap[s.action]||s.action}</span></td>
           <td style="font-family:monospace;font-size:12px">${s.code}</td>
@@ -1568,7 +1568,7 @@ function pageHqScanLog(){
           <td><span class="pill ${pillMap[s.result]||'p-pending'}">${labelMap[s.result]||s.result}</span></td>
           <td style="font-size:12px;color:var(--grey)">${s.ref||'—'}</td>
         </tr>`;
-      }).join(''):`<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📋</div><h4>Tiada log scan</h4><p>Log direkodkan setiap kali barcode discan</p></div></td></tr>`}
+      }).join(''):`<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📋</div><h4>No scan logs</h4><p>Logs are recorded each time a barcode is scanned</p></div></td></tr>`}
     </tbody>
   </table></div>
 </div>`;
@@ -1589,26 +1589,26 @@ function pageHqBatches(){
     const p=PRODUCTS.find(x=>x.id===b.pid);return s+(p?p.b2bPrice*b.qty:0);},0);
 
   const statusColorMap={expired:'var(--red)',critical:'var(--orange)',warning:'#92400e',ok:'var(--green)'};
-  const statusLabelMap={expired:'Luput',critical:'Kritikal',warning:'Amaran',ok:'OK'};
+  const statusLabelMap={expired:'Expired',critical:'Critical',warning:'Warning',ok:'OK'};
 
-  return `<div class="page-head"><h2>🗓️ Batch & Expiry</h2><p>Penjejakan batch FEFO — First Expired First Out</p></div>
+  return `<div class="page-head"><h2>🗓️ Batch & Expiry</h2><p>FEFO batch tracking — First Expired First Out</p></div>
 <div class="kpis">
-  <div class="kpi kn"><div class="lbl">Jumlah Batch</div><div class="val">${total}</div><div class="sub">Dalam sistem</div></div>
-  <div class="kpi ko"><div class="lbl">Batch Kritikal</div><div class="val">${critical}</div><div class="sub">< 90 hari</div></div>
-  <div class="kpi kr"><div class="lbl">Batch Luput</div><div class="val">${expired}</div><div class="sub">Perlu tindakan</div></div>
-  <div class="kpi kp"><div class="lbl">Nilai Stok Berisiko</div><div class="val">${fmtRM(riskVal)}</div><div class="sub">Kritikal + luput</div></div>
+  <div class="kpi kn"><div class="lbl">Total Batches</div><div class="val">${total}</div><div class="sub">In system</div></div>
+  <div class="kpi ko"><div class="lbl">Critical Batches</div><div class="val">${critical}</div><div class="sub">< 90 days</div></div>
+  <div class="kpi kr"><div class="lbl">Expired Batches</div><div class="val">${expired}</div><div class="sub">Action needed</div></div>
+  <div class="kpi kp"><div class="lbl">Stock Value at Risk</div><div class="val">${fmtRM(riskVal)}</div><div class="sub">Critical + expired</div></div>
 </div>
 <div class="card">
   <div class="card-h">
-    <h3>Senarai Batch</h3>
+    <h3>Batch List</h3>
     <div style="display:flex;gap:8px">
-      <button class="btn btn-sm ${tab==='all'?'btn-primary':'btn-ghost'}" onclick="window._batchTab='all';navTo('hq-batches')">Semua</button>
-      <button class="btn btn-sm ${tab==='critical'?'btn-primary':'btn-ghost'}" onclick="window._batchTab='critical';navTo('hq-batches')">Kritikal & Luput</button>
-      <button class="btn btn-sm ${tab==='expired'?'btn-primary':'btn-ghost'}" onclick="window._batchTab='expired';navTo('hq-batches')">Luput Sahaja</button>
+      <button class="btn btn-sm ${tab==='all'?'btn-primary':'btn-ghost'}" onclick="window._batchTab='all';navTo('hq-batches')">All</button>
+      <button class="btn btn-sm ${tab==='critical'?'btn-primary':'btn-ghost'}" onclick="window._batchTab='critical';navTo('hq-batches')">Critical & Expired</button>
+      <button class="btn btn-sm ${tab==='expired'?'btn-primary':'btn-ghost'}" onclick="window._batchTab='expired';navTo('hq-batches')">Expired Only</button>
     </div>
   </div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Produk</th><th>No. Batch</th><th>Kod Batch</th><th>Qty Baki</th><th>Tarikh Luput</th><th>Hari Lagi</th><th>Status</th><th>GRN Ref</th><th></th></tr></thead>
+    <thead><tr><th>Product</th><th>Batch No.</th><th>Batch Code</th><th>Qty Left</th><th>Expiry Date</th><th>Days Left</th><th>Status</th><th>GRN Ref</th><th></th></tr></thead>
     <tbody>
       ${rows.length?rows.map(b=>{
         const p=PRODUCTS.find(x=>x.id===b.pid);
@@ -1619,13 +1619,13 @@ function pageHqBatches(){
         return`<tr style="${rowBg}">
           <td><div style="display:flex;align-items:center;gap:6px"><span style="font-weight:600">${p?p.name:b.pid}</span></div></td>
           <td style="font-family:monospace;font-weight:600">${b.batchNo}</td>
-          <td><code style="background:var(--sand);padding:3px 8px;border-radius:6px;font-size:12px;cursor:pointer;user-select:all;border:1px solid var(--line)" title="Klik untuk salin" onclick="navigator.clipboard.writeText('${code}');toast('✓ Kod disalin')">${code}</code></td>
+          <td><code style="background:var(--sand);padding:3px 8px;border-radius:6px;font-size:12px;cursor:pointer;user-select:all;border:1px solid var(--line)" title="Click to copy" onclick="navigator.clipboard.writeText('${code}');toast('✓ Code copied')">${code}</code></td>
           <td><span class="pill ${b.qty<=0?'p-cancel':b.qty<50?'p-new':'p-done'}">${b.qty} unit</span></td>
           <td style="font-weight:600">${b.expiry}</td>
-          <td style="color:${statusColorMap[st]};font-weight:700">${days<0?'Luput '+Math.abs(days)+'h':days+'h'}</td>
+          <td style="color:${statusColorMap[st]};font-weight:700">${days<0?'Expired '+Math.abs(days)+'d':days+'d'}</td>
           <td><span class="pill ${st==='expired'?'p-cancel':st==='critical'?'p-new':st==='warning'?'p-process':'p-done'}">${statusLabelMap[st]}</span></td>
           <td style="font-size:12px;color:var(--grey)">${b.grnRef||'—'}</td>
-          <td><button class="btn btn-ghost btn-xs" onclick="showPrintLabel('${b.id}')">🖨️ Cetak</button></td>
+          <td><button class="btn btn-ghost btn-xs" onclick="showPrintLabel('${b.id}')">🖨️ Print</button></td>
         </tr>`;
       }).join(''):`<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">🗓️</div><h4>Tiada batch</h4></div></td></tr>`}
     </tbody>
@@ -1649,7 +1649,7 @@ function stValCell(sys,phys,cost){
   const col=d===0?'var(--green)':d<0?'var(--red)':'var(--orange)';
   return `<span style="color:${col};font-weight:700">${fmtRM(d)}</span>`;
 }
-const ST_STATUS={draft:['p-new','Draf'],pending_review:['p-process','Semakan'],applied:['p-done','Selesai']};
+const ST_STATUS={draft:['p-new','Draft'],pending_review:['p-process','Review'],applied:['p-done','Completed']};
 
 function pageStocktake(){
   const head=`<div class="page-head"><h2>📋 Stocktake</h2><p>Kiraan stok fizikal ikut batch</p></div>`;
@@ -1867,7 +1867,7 @@ async function applyStocktake(stId){
 // STEP 4: HQ B2B Orders, Catalog, Suppliers, PO, GRN
 // ============================================================
 function statusPill(s){
-  const map={new:'p-new Baru',process:'p-process Diproses',done:'p-done Selesai',cancel:'p-cancel Batal',pending:'p-pending Belum Dihantar',confirmed:'p-process Menunggu Barang',partial:'p-new Separa Terima',delivered:'p-done Selesai'};
+  const map={new:'p-new New',process:'p-process Processing',done:'p-done Completed',cancel:'p-cancel Cancelled',pending:'p-pending Not Sent',confirmed:'p-process Awaiting Goods',partial:'p-new Partial Receipt',delivered:'p-done Completed'};
   const [cls,lbl]=(map[s]||'p-pending '+s).split(' ');
   return `<span class="pill ${cls}">${lbl}</span>`;
 }
