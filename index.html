@@ -2066,17 +2066,17 @@ async function processB2bFEFO(o,confirmedAllocs){
 function pageHqCatalog(){
   let search=window._catSearch||'';
   let shown=PRODUCTS.filter(p=>!search||p.name.toLowerCase().includes(search.toLowerCase())||p.cat.toLowerCase().includes(search.toLowerCase()));
-  return `<div class="page-head"><h2>📦 Katalog Produk</h2><p>Urus produk, harga B2B, harga B2C dan stok</p></div>
+  return `<div class="page-head"><h2>📦 Product Catalog</h2><p>Manage products, B2B pricing, B2C pricing and stock</p></div>
 <div class="card">
   <div class="card-h">
-    <h3>Produk (${PRODUCTS.length})</h3>
+    <h3>Products (${PRODUCTS.length})</h3>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-      <div class="search-wrap"><input placeholder="Cari produk..." value="${search}" oninput="filterCatalog(this.value)" style="width:220px"></div>
-      <button class="btn btn-primary btn-sm" onclick="showAddProduct()">+ Tambah Produk</button>
+      <div class="search-wrap"><input placeholder="Search products..." value="${search}" oninput="filterCatalog(this.value)" style="width:220px"></div>
+      <button class="btn btn-primary btn-sm" onclick="showAddProduct()">+ Add Product</button>
     </div>
   </div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Produk</th><th>Kategori</th><th>Unit</th><th>Harga Supplier</th><th>Harga B2B</th><th>Harga B2C</th><th>Stok (FEFO)</th><th></th></tr></thead>
+    <thead><tr><th>Product</th><th>Category</th><th>Unit</th><th>Supplier Price</th><th>B2B Price</th><th>B2C Price</th><th>Stock (FEFO)</th><th></th></tr></thead>
     <tbody id="catTbody">
       ${shown.map(p=>{const ds=BATCHES.some(b=>b.pid===p.id)?totalStock(p.id):p.stock;const nearBatch=getBatches(p.id)[0];const nearExColor=nearBatch?{expired:'var(--red)',critical:'var(--orange)',warning:'#92400e',ok:'var(--green)'}[expiryStatus(nearBatch.expiry)]:'';return`<tr>
         <td><div style="display:flex;align-items:center;gap:8px"><div style="font-weight:600;font-size:13px">${p.name}</div></div></td>
@@ -2085,10 +2085,10 @@ function pageHqCatalog(){
         <td>${fmtRM(p.supplierPrice)}</td>
         <td style="font-weight:600;color:var(--navy)">${fmtRM(p.b2bPrice)}</td>
         <td style="font-weight:600;color:var(--green)">${fmtRM(p.b2cPrice)}</td>
-        <td><span class="pill ${ds<=0?'p-cancel':ds<50?'p-new':'p-done'}">${ds} unit</span>${nearBatch?`<div style="font-size:11px;margin-top:3px;color:${nearExColor}">Luput: ${nearBatch.expiry}</div>`:''}</td>
+        <td><span class="pill ${ds<=0?'p-cancel':ds<50?'p-new':'p-done'}">${ds} unit</span>${nearBatch?`<div style="font-size:11px;margin-top:3px;color:${nearExColor}">Exp: ${nearBatch.expiry}</div>`:''}</td>
         <td><div style="display:flex;gap:6px">
           <button class="btn btn-ghost btn-xs" onclick="editProduct('${p.id}')">Edit</button>
-          <button class="btn btn-red btn-xs" onclick="delProduct('${p.id}')">Padam</button>
+          <button class="btn btn-red btn-xs" onclick="delProduct('${p.id}')">Delete</button>
         </div></td>
       </tr>`}).join('')}
     </tbody>
@@ -2111,10 +2111,10 @@ function filterCatalog(q){
       <td>${fmtRM(p.supplierPrice)}</td>
       <td style="font-weight:600;color:var(--navy)">${fmtRM(p.b2bPrice)}</td>
       <td style="font-weight:600;color:var(--green)">${fmtRM(p.b2cPrice)}</td>
-      <td><span class="pill ${ds<=0?'p-cancel':ds<50?'p-new':'p-done'}">${ds} unit</span>${nearBatch?`<div style="font-size:11px;margin-top:3px;color:${nearExColor}">Luput: ${nearBatch.expiry}</div>`:''}</td>
+      <td><span class="pill ${ds<=0?'p-cancel':ds<50?'p-new':'p-done'}">${ds} unit</span>${nearBatch?`<div style="font-size:11px;margin-top:3px;color:${nearExColor}">Exp: ${nearBatch.expiry}</div>`:''}</td>
       <td><div style="display:flex;gap:6px">
         <button class="btn btn-ghost btn-xs" onclick="editProduct('${p.id}')">Edit</button>
-        <button class="btn btn-red btn-xs" onclick="delProduct('${p.id}')">Padam</button>
+        <button class="btn btn-red btn-xs" onclick="delProduct('${p.id}')">Delete</button>
       </div></td>
     </tr>`;
   }).join('');
@@ -2124,47 +2124,46 @@ function catDropdown(elId,val){
   const opts=CATEGORIES.map(c=>`<option value="${c}" ${c===val?'selected':''}>${c}</option>`).join('');
   return `<select id="${elId}" onchange="if(this.value==='__new__'){document.getElementById('${elId}New').style.display='block';}else{document.getElementById('${elId}New').style.display='none';}">
     ${opts}
-    <option value="__new__">+ Tambah kategori baru...</option>
+    <option value="__new__">+ Add new category...</option>
   </select>
-  <input id="${elId}New" placeholder="Nama kategori baru" style="display:none;margin-top:6px;width:100%;padding:10px 14px;border:1.5px solid var(--line);border-radius:var(--radius-sm);background:var(--paper);color:var(--ink)">`;
+  <input id="${elId}New" placeholder="New category name" style="display:none;margin-top:6px;width:100%;padding:10px 14px;border:1.5px solid var(--line);border-radius:var(--radius-sm);background:var(--paper);color:var(--ink)">`;
 }
 
 async function resolveCat(elId){
   const val=document.getElementById(elId)?.value;
   if(val!=='__new__')return val||'';
   const newCat=document.getElementById(elId+'New')?.value?.trim();
-  if(!newCat){toast('❌ Sila isi nama kategori baru');return null;}
+  if(!newCat){toast('❌ Please enter new category name');return null;}
   if(!CATEGORIES.includes(newCat)){CATEGORIES.push(newCat);await saveCategories();}
   return newCat;
 }
 
 function showAddProduct(){
-  openDlg(`<h3>➕ Tambah Produk Baru</h3>
+  openDlg(`<h3>➕ Add New Product</h3>
 <div class="form-row">
-  <div class="fld full"><label>Nama Produk</label><input id="pName" placeholder="Nama produk"></div>
-  <div class="fld"><label>Kategori</label>${catDropdown('pCat','')}</div>
-  <div class="fld"><label>Emoji/Ikon</label><input id="pEmoji" placeholder="💊" maxlength="4"></div>
+  <div class="fld full"><label>Product Name</label><input id="pName" placeholder="Product name"></div>
+  <div class="fld"><label>Category</label>${catDropdown('pCat','')}</div>
   <div class="fld"><label>Unit</label><select id="pUnit"><option>BOX</option><option>BTL</option><option>CTN</option><option>PCK</option></select></div>
-  <div class="fld"><label>Per Karton</label><input id="pPerCtn" type="number" placeholder="12" value="12"></div>
-  <div class="fld"><label>Harga Supplier (RM)</label><input id="pSupP" type="number" step="0.01" placeholder="0.00"></div>
-  <div class="fld"><label>Harga B2B (RM)</label><input id="pB2bP" type="number" step="0.01" placeholder="0.00"></div>
-  <div class="fld"><label>Harga B2C (RM)</label><input id="pB2cP" type="number" step="0.01" placeholder="0.00"></div>
-  <div class="fld"><label>Stok Awal</label><input id="pStock" type="number" placeholder="0" value="0"></div>
+  <div class="fld"><label>Per Carton</label><input id="pPerCtn" type="number" placeholder="12" value="12"></div>
+  <div class="fld"><label>Supplier Price (RM)</label><input id="pSupP" type="number" step="0.01" placeholder="0.00"></div>
+  <div class="fld"><label>B2B Price (RM)</label><input id="pB2bP" type="number" step="0.01" placeholder="0.00"></div>
+  <div class="fld"><label>B2C Price (RM)</label><input id="pB2cP" type="number" step="0.01" placeholder="0.00"></div>
+  <div class="fld"><label>Initial Stock</label><input id="pStock" type="number" placeholder="0" value="0"></div>
 </div>
 <div class="dlg-footer">
-  <button class="btn btn-ghost" onclick="closeDlg()">Batal</button>
-  <button class="btn btn-primary" onclick="addProduct()">Simpan</button>
+  <button class="btn btn-ghost" onclick="closeDlg()">Cancel</button>
+  <button class="btn btn-primary" onclick="addProduct()">Save</button>
 </div>`,true);
 }
 
 async function addProduct(){
   const n=document.getElementById('pName')?.value?.trim();
-  if(!n){toast('❌ Sila isi nama produk');return;}
+  if(!n){toast('❌ Please enter product name');return;}
   const cat=await resolveCat('pCat');if(cat===null)return;
   const p={
     id:'P'+(PRODUCTS.length+1).toString().padStart(3,'0'),
     name:n,cat,
-    emoji:document.getElementById('pEmoji').value||'📦',
+    emoji:'📦',
     unit:document.getElementById('pUnit').value,
     perCtn:parseInt(document.getElementById('pPerCtn').value)||12,
     supplierPrice:parseFloat(document.getElementById('pSupP').value)||0,
@@ -2172,23 +2171,23 @@ async function addProduct(){
     b2cPrice:parseFloat(document.getElementById('pB2cP').value)||0,
     stock:parseInt(document.getElementById('pStock').value)||0,
   };
-  PRODUCTS.push(p);await saveProducts();closeDlg();navTo('hq-catalog');toast('✓ Produk '+n+' ditambah');
+  PRODUCTS.push(p);await saveProducts();closeDlg();navTo('hq-catalog');toast('✓ Product '+n+' added');
 }
 
 function editProduct(id){
   const p=PRODUCTS.find(x=>x.id===id);if(!p)return;
-  openDlg(`<h3>✏️ Edit Produk</h3>
+  openDlg(`<h3>✏️ Edit Product</h3>
 <div class="form-row">
-  <div class="fld full"><label>Nama Produk</label><input id="epName" value="${p.name}"></div>
-  <div class="fld"><label>Kategori</label>${catDropdown('epCat',p.cat)}</div>
-  <div class="fld"><label>Harga Supplier (RM)</label><input id="epSupP" type="number" step="0.01" value="${p.supplierPrice}"></div>
-  <div class="fld"><label>Harga B2B (RM)</label><input id="epB2bP" type="number" step="0.01" value="${p.b2bPrice}"></div>
-  <div class="fld"><label>Harga B2C (RM)</label><input id="epB2cP" type="number" step="0.01" value="${p.b2cPrice}"></div>
-  <div class="fld"><label>Stok</label><input id="epStock" type="number" value="${p.stock}"></div>
+  <div class="fld full"><label>Product Name</label><input id="epName" value="${p.name}"></div>
+  <div class="fld"><label>Category</label>${catDropdown('epCat',p.cat)}</div>
+  <div class="fld"><label>Supplier Price (RM)</label><input id="epSupP" type="number" step="0.01" value="${p.supplierPrice}"></div>
+  <div class="fld"><label>B2B Price (RM)</label><input id="epB2bP" type="number" step="0.01" value="${p.b2bPrice}"></div>
+  <div class="fld"><label>B2C Price (RM)</label><input id="epB2cP" type="number" step="0.01" value="${p.b2cPrice}"></div>
+  <div class="fld"><label>Stock</label><input id="epStock" type="number" value="${p.stock}"></div>
 </div>
 <div class="dlg-footer">
-  <button class="btn btn-ghost" onclick="closeDlg()">Batal</button>
-  <button class="btn btn-primary" onclick="saveEditProduct('${id}')">Simpan</button>
+  <button class="btn btn-ghost" onclick="closeDlg()">Cancel</button>
+  <button class="btn btn-primary" onclick="saveEditProduct('${id}')">Save</button>
 </div>`);
 }
 
@@ -2201,25 +2200,25 @@ async function saveEditProduct(id){
   p.b2bPrice=parseFloat(document.getElementById('epB2bP').value)||0;
   p.b2cPrice=parseFloat(document.getElementById('epB2cP').value)||0;
   p.stock=parseInt(document.getElementById('epStock').value)||0;
-  await saveProducts();closeDlg();navTo('hq-catalog');toast('✓ Produk dikemaskini');
+  await saveProducts();closeDlg();navTo('hq-catalog');toast('✓ Product updated');
 }
 
 function delProduct(id){
   const p=PRODUCTS.find(x=>x.id===id);
-  showConfirm('Padam Produk','Padam "'+p?.name+'"? Tindakan ini tidak boleh dibatalkan.','Padam',async()=>{
-    PRODUCTS=PRODUCTS.filter(x=>x.id!==id);await saveProducts();navTo('hq-catalog');toast('✓ Produk dipadam');
+  showConfirm('Delete Product','Delete "'+p?.name+'"? This action cannot be undone.','Delete',async()=>{
+    PRODUCTS=PRODUCTS.filter(x=>x.id!==id);await saveProducts();navTo('hq-catalog');toast('✓ Product deleted');
   });
 }
 
 function pageHqSuppliers(){
   const active=SUPPLIERS.filter(s=>s.status==='active').length;
-  return `<div class="page-head"><h2>🚚 Pembekal</h2><p>Urus pembekal yang berdaftar dalam sistem</p></div>
+  return `<div class="page-head"><h2>🚚 Suppliers</h2><p>Manage suppliers registered in the system</p></div>
 <div class="card">
-  <div class="card-h"><h3>Senarai Pembekal (${SUPPLIERS.length})</h3>
-    <button class="btn btn-primary btn-sm" onclick="showAddSupplier()">+ Tambah Pembekal</button>
+  <div class="card-h"><h3>Supplier List (${SUPPLIERS.length})</h3>
+    <button class="btn btn-primary btn-sm" onclick="showAddSupplier()">+ Add Supplier</button>
   </div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Nama Pembekal</th><th>Hubungi</th><th>Telefon</th><th>Syarat Bayar</th><th>PO Aktif</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>Supplier Name</th><th>Contact</th><th>Phone</th><th>Payment Terms</th><th>Active PO</th><th>Status</th><th></th></tr></thead>
     <tbody>
       ${SUPPLIERS.length?SUPPLIERS.map(s=>{
         const myPos=POS.filter(p=>p.supplier===s.name);
@@ -2229,39 +2228,39 @@ function pageHqSuppliers(){
           <td>${s.contact}</td>
           <td>${s.phone}</td>
           <td><span style="font-size:12px;color:var(--grey)">${s.terms}</span></td>
-          <td>${activePo>0?`<span class="pill p-process">${activePo} aktif</span>`:'<span style="color:var(--grey)">-</span>'}</td>
-          <td><span class="pill ${s.status==='active'?'p-done':'p-cancel'}">${s.status==='active'?'Aktif':'Tidak Aktif'}</span></td>
+          <td>${activePo>0?`<span class="pill p-process">${activePo} active</span>`:'<span style="color:var(--grey)">-</span>'}</td>
+          <td><span class="pill ${s.status==='active'?'p-done':'p-cancel'}">${s.status==='active'?'Active':'Inactive'}</span></td>
           <td><div style="display:flex;gap:6px">
             <button class="btn btn-ghost btn-xs" onclick="editSupplier('${s.id}')">Edit</button>
             <button class="btn btn-primary btn-xs" onclick="showCreatePO('${s.name}')">+ PO</button>
-            <button class="btn btn-red btn-xs" onclick="delSupplier('${s.id}')">Padam</button>
+            <button class="btn btn-red btn-xs" onclick="delSupplier('${s.id}')">Delete</button>
           </div></td>
         </tr>`;
-      }).join(''):`<tr><td colspan="7"><div class="empty-state" style="padding:40px"><div class="empty-icon">🚚</div><h4>Belum ada pembekal</h4><p>Tambah pembekal pertama</p></div></td></tr>`}
+      }).join(''):`<tr><td colspan="7"><div class="empty-state" style="padding:40px"><div class="empty-icon">🚚</div><h4>No suppliers yet</h4><p>Add your first supplier</p></div></td></tr>`}
     </tbody>
   </table></div>
 </div>`;
 }
 
 function showAddSupplier(){
-  openDlg(`<h3>➕ Tambah Pembekal Baru</h3>
+  openDlg(`<h3>➕ Add New Supplier</h3>
 <div class="form-row">
-  <div class="fld full"><label>Nama Syarikat</label><input id="supName" placeholder="Nama syarikat pembekal"></div>
-  <div class="fld"><label>Nama Pegawai Hubungi</label><input id="supContact" placeholder="Nama pegawai"></div>
-  <div class="fld"><label>No. Telefon</label><input id="supPhone" placeholder="03-XXXX XXXX"></div>
-  <div class="fld"><label>E-mel</label><input id="supEmail" type="email" placeholder="sales@syarikat.com"></div>
-  <div class="fld"><label>Syarat Pembayaran</label><select id="supTerms"><option>Net 30</option><option>Net 45</option><option>Net 60</option><option>COD</option></select></div>
-  <div class="fld full"><label>Alamat</label><textarea id="supAddr" rows="2" placeholder="Alamat penuh syarikat"></textarea></div>
+  <div class="fld full"><label>Company Name</label><input id="supName" placeholder="Supplier company name"></div>
+  <div class="fld"><label>Contact Person</label><input id="supContact" placeholder="Officer name"></div>
+  <div class="fld"><label>Phone No.</label><input id="supPhone" placeholder="03-XXXX XXXX"></div>
+  <div class="fld"><label>Email</label><input id="supEmail" type="email" placeholder="sales@syarikat.com"></div>
+  <div class="fld"><label>Payment Terms</label><select id="supTerms"><option>Net 30</option><option>Net 45</option><option>Net 60</option><option>COD</option></select></div>
+  <div class="fld full"><label>Address</label><textarea id="supAddr" rows="2" placeholder="Full company address"></textarea></div>
 </div>
 <div class="dlg-footer">
-  <button class="btn btn-ghost" onclick="closeDlg()">Batal</button>
-  <button class="btn btn-primary" onclick="addSupplier()">Simpan</button>
+  <button class="btn btn-ghost" onclick="closeDlg()">Cancel</button>
+  <button class="btn btn-primary" onclick="addSupplier()">Save</button>
 </div>`,true);
 }
 
 async function addSupplier(){
   const name=document.getElementById('supName')?.value?.trim();
-  if(!name){toast('❌ Sila isi nama syarikat');return;}
+  if(!name){toast('❌ Please enter company name');return;}
   const s={
     id:uid('SUP'),name,
     contact:document.getElementById('supContact').value,
@@ -2271,29 +2270,29 @@ async function addSupplier(){
     terms:document.getElementById('supTerms').value,
     status:'active',
   };
-  SUPPLIERS.push(s);await saveSuppliers();closeDlg();navTo('hq-suppliers');toast('✓ Pembekal '+name+' ditambah');
+  SUPPLIERS.push(s);await saveSuppliers();closeDlg();navTo('hq-suppliers');toast('✓ Supplier '+name+' added');
 }
 
 function editSupplier(id){
   const s=SUPPLIERS.find(x=>x.id===id);if(!s)return;
-  openDlg(`<h3>✏️ Edit Pembekal</h3>
+  openDlg(`<h3>✏️ Edit Supplier</h3>
 <div class="form-row">
-  <div class="fld full"><label>Nama Syarikat</label><input id="esName" value="${s.name}"></div>
-  <div class="fld"><label>Nama Pegawai Hubungi</label><input id="esContact" value="${s.contact}"></div>
-  <div class="fld"><label>No. Telefon</label><input id="esPhone" value="${s.phone}"></div>
-  <div class="fld"><label>E-mel</label><input id="esEmail" type="email" value="${s.email}"></div>
-  <div class="fld"><label>Syarat Pembayaran</label><select id="esTerms">
+  <div class="fld full"><label>Company Name</label><input id="esName" value="${s.name}"></div>
+  <div class="fld"><label>Contact Person</label><input id="esContact" value="${s.contact}"></div>
+  <div class="fld"><label>Phone No.</label><input id="esPhone" value="${s.phone}"></div>
+  <div class="fld"><label>Email</label><input id="esEmail" type="email" value="${s.email}"></div>
+  <div class="fld"><label>Payment Terms</label><select id="esTerms">
     ${['Net 30','Net 45','Net 60','COD'].map(t=>`<option ${s.terms===t?'selected':''}>${t}</option>`).join('')}
   </select></div>
   <div class="fld"><label>Status</label><select id="esStatus">
-    <option value="active" ${s.status==='active'?'selected':''}>Aktif</option>
-    <option value="inactive" ${s.status==='inactive'?'selected':''}>Tidak Aktif</option>
+    <option value="active" ${s.status==='active'?'selected':''}>Active</option>
+    <option value="inactive" ${s.status==='inactive'?'selected':''}>Inactive</option>
   </select></div>
-  <div class="fld full"><label>Alamat</label><textarea id="esAddr" rows="2">${s.address}</textarea></div>
+  <div class="fld full"><label>Address</label><textarea id="esAddr" rows="2">${s.address}</textarea></div>
 </div>
 <div class="dlg-footer">
-  <button class="btn btn-ghost" onclick="closeDlg()">Batal</button>
-  <button class="btn btn-primary" onclick="saveEditSupplier('${id}')">Simpan</button>
+  <button class="btn btn-ghost" onclick="closeDlg()">Cancel</button>
+  <button class="btn btn-primary" onclick="saveEditSupplier('${id}')">Save</button>
 </div>`,true);
 }
 
@@ -2306,13 +2305,13 @@ async function saveEditSupplier(id){
   s.terms=document.getElementById('esTerms').value;
   s.status=document.getElementById('esStatus').value;
   s.address=document.getElementById('esAddr').value;
-  await saveSuppliers();closeDlg();navTo('hq-suppliers');toast('✓ Pembekal dikemaskini');
+  await saveSuppliers();closeDlg();navTo('hq-suppliers');toast('✓ Supplier updated');
 }
 
 function delSupplier(id){
   const s=SUPPLIERS.find(x=>x.id===id);
-  showConfirm('Padam Pembekal','Padam "'+s?.name+'"? Tindakan ini tidak boleh dibatalkan.','Padam',async()=>{
-    SUPPLIERS=SUPPLIERS.filter(x=>x.id!==id);await saveSuppliers();navTo('hq-suppliers');toast('✓ Pembekal dipadam');
+  showConfirm('Delete Supplier','Delete "'+s?.name+'"? This action cannot be undone.','Delete',async()=>{
+    SUPPLIERS=SUPPLIERS.filter(x=>x.id!==id);await saveSuppliers();navTo('hq-suppliers');toast('✓ Supplier deleted');
   });
 }
 
