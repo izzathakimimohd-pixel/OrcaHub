@@ -1642,6 +1642,13 @@ function stVarCell(sys,phys){
   const col=d===0?'var(--green)':d<0?'var(--red)':'var(--orange)';
   return `<span style="color:${col};font-weight:700">${d>0?'+'+d:d}</span>`;
 }
+// Nilai selisih pada kos belian (supplierPrice). cost = pr?.supplierPrice||0
+function stValCell(sys,phys,cost){
+  if(phys==null) return '<span style="color:var(--grey)">—</span>';
+  const d=(Number(phys)-Number(sys))*(Number(cost)||0);
+  const col=d===0?'var(--green)':d<0?'var(--red)':'var(--orange)';
+  return `<span style="color:${col};font-weight:700">${fmtRM(d)}</span>`;
+}
 const ST_STATUS={draft:['p-new','Draf'],pending_review:['p-process','Semakan'],applied:['p-done','Selesai']};
 
 function pageStocktake(){
@@ -1680,6 +1687,13 @@ function pageStocktake(){
 function renderStocktakeReview(st){
   const counted=st.lines.filter(l=>l.physQty!=null).length;
   const varLines=st.lines.filter(l=>l.physQty!=null&&l.physQty!==l.sysQty);
+  // Nilai selisih pada kos belian (supplierPrice)
+  const lineVal=l=>{const pr=PRODUCTS.find(p=>p.id===l.pid);return (l.physQty-l.sysQty)*(pr?.supplierPrice||0);};
+  const valued=st.lines.filter(l=>l.physQty!=null);
+  const netVal=valued.reduce((s,l)=>s+lineVal(l),0);
+  const shortVal=valued.reduce((s,l)=>{const d=lineVal(l);return s+(d<0?d:0);},0);
+  const overVal=valued.reduce((s,l)=>{const d=lineVal(l);return s+(d>0?d:0);},0);
+  const netCol=netVal===0?'var(--green)':netVal<0?'var(--red)':'var(--orange)';
   return `
 <div style="margin-bottom:14px"><button class="btn btn-ghost btn-sm" onclick="window._stReview=null;navTo('hq-stocktake')">← Kembali ke Senarai</button></div>
 <div class="kpis">
@@ -1687,6 +1701,9 @@ function renderStocktakeReview(st){
   <div class="kpi ko"><div class="lbl">Bil Batch Dikira</div><div class="val">${counted}/${st.lines.length}</div></div>
   <div class="kpi kr"><div class="lbl">Bil Selisih</div><div class="val">${varLines.length}</div></div>
   <div class="kpi kp"><div class="lbl">Status</div><div class="val" style="font-size:18px">${(ST_STATUS[st.status]||['',st.status])[1]}</div>${st.appliedAt?`<div class="sub">${new Date(st.appliedAt).toLocaleString('ms-MY')}</div>`:''}</div>
+  <div class="kpi kn"><div class="lbl">Nilai Selisih Bersih</div><div class="val" style="color:${netCol}">${fmtRM(netVal)}</div><div class="sub">Kos belian (supplier price)</div></div>
+  <div class="kpi kr"><div class="lbl">Nilai Kurang</div><div class="val" style="color:var(--red)">${fmtRM(shortVal)}</div><div class="sub">Kerugian pada kos</div></div>
+  <div class="kpi ko"><div class="lbl">Nilai Lebih</div><div class="val" style="color:var(--orange)">${fmtRM(overVal)}</div><div class="sub">Lebihan pada kos</div></div>
 </div>
 <div class="card">
   <div class="card-h"><h3>Semakan Selisih</h3>
@@ -1694,10 +1711,11 @@ function renderStocktakeReview(st){
     ${st.status==='applied'?`<span class="pill p-done">Telah Diterapkan oleh ${st.appliedBy||'—'}</span>`:''}
   </div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Produk</th><th>Batch</th><th>Expiry</th><th>Qty Sistem</th><th>Qty Fizikal</th><th>Selisih</th></tr></thead>
+    <thead><tr><th>Produk</th><th>Batch</th><th>Expiry</th><th>Qty Sistem</th><th>Qty Fizikal</th><th>Selisih</th><th>Nilai Selisih (RM)</th></tr></thead>
     <tbody>
       ${st.lines.map(l=>{
         const pr=PRODUCTS.find(p=>p.id===l.pid);const nm=pr?(pr.name||pr.desc||l.pid):l.pid;
+        const cost=pr?.supplierPrice||0;
         const exCol={expired:'var(--red)',critical:'var(--orange)',warning:'#92400e',ok:'var(--green)'}[expiryStatus(l.expiry)];
         const rowBg=(l.physQty!=null&&l.physQty!==l.sysQty)?'background:var(--orange-l)':'';
         return `<tr style="${rowBg}">
@@ -1707,6 +1725,7 @@ function renderStocktakeReview(st){
           <td>${l.sysQty}</td>
           <td>${l.physQty==null?'<span style="color:var(--grey)">—</span>':l.physQty}</td>
           <td>${stVarCell(l.sysQty,l.physQty)}</td>
+          <td>${stValCell(l.sysQty,l.physQty,cost)}</td>
         </tr>`;
       }).join('')}
     </tbody>
@@ -1742,13 +1761,14 @@ function pageStocktakeCount(){
 </div>
 <div class="card">
   <div class="card-h"><h3>Kiraan Batch (${st.lines.length})</h3>
-    <div style="font-size:12px;color:var(--grey)">Dikira: <b id="stSumCounted">${counted}</b>/${st.lines.length} · Selisih: <b id="stSumVariance" style="color:var(--orange)">${varc}</b></div>
+    <div style="font-size:12px;color:var(--grey)">Dikira: <b id="stSumCounted">${counted}</b>/${st.lines.length} · Selisih: <b id="stSumVariance" style="color:var(--orange)">${varc}</b> · <span style="font-style:italic">Nilai pada kos belian (supplier price)</span></div>
   </div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Produk</th><th>Batch</th><th>Expiry</th><th>Qty Sistem</th><th>Qty Fizikal</th><th>Selisih</th></tr></thead>
+    <thead><tr><th>Produk</th><th>Batch</th><th>Expiry</th><th>Qty Sistem</th><th>Qty Fizikal</th><th>Selisih</th><th>Nilai Selisih (RM)</th></tr></thead>
     <tbody>
       ${st.lines.map(l=>{
         const pr=PRODUCTS.find(p=>p.id===l.pid);const nm=pr?(pr.name||pr.desc||l.pid):l.pid;
+        const cost=pr?.supplierPrice||0;
         const exCol={expired:'var(--red)',critical:'var(--orange)',warning:'#92400e',ok:'var(--green)'}[expiryStatus(l.expiry)];
         return `<tr id="strow_${l.batchId}">
           <td style="font-weight:600">${nm}</td>
@@ -1757,6 +1777,7 @@ function pageStocktakeCount(){
           <td>${l.sysQty}</td>
           <td><input type="number" min="0" id="phys_${l.batchId}" value="${l.physQty==null?'':l.physQty}" onchange="stSetPhys('${l.batchId}',this.value)" style="width:90px;padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink)"></td>
           <td id="var_${l.batchId}">${stVarCell(l.sysQty,l.physQty)}</td>
+          <td id="val_${l.batchId}">${stValCell(l.sysQty,l.physQty,cost)}</td>
         </tr>`;
       }).join('')}
     </tbody>
@@ -1793,6 +1814,8 @@ function stSetPhys(batchId,val){
   saveStocktakes();
   const cell=document.getElementById('var_'+batchId);
   if(cell)cell.innerHTML=stVarCell(ln.sysQty,ln.physQty);
+  const vcell=document.getElementById('val_'+batchId);
+  if(vcell){const pr=PRODUCTS.find(p=>p.id===ln.pid);vcell.innerHTML=stValCell(ln.sysQty,ln.physQty,pr?.supplierPrice||0);}
   const cEl=document.getElementById('stSumCounted');
   const vEl=document.getElementById('stSumVariance');
   if(cEl)cEl.textContent=st.lines.filter(l=>l.physQty!=null).length;
