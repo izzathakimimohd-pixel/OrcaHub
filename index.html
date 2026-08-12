@@ -2677,30 +2677,30 @@ function showGrnStep1(){
   GRNS.filter(g=>g.status==='draft').forEach(g=>{draftMap[g.poRef]=g.id;});
   const eligible=POS.filter(p=>p.status==='confirmed'||p.status==='partial');
   if(!eligible.length){
-    openDlg(`<h3>📋 Buat GRN Baru</h3><div class="empty-state"><div class="empty-icon">📦</div><h4>Tiada PO layak</h4><p>GRN boleh dibuat untuk PO berstatus Menunggu Barang atau Separa Terima</p></div><div class="dlg-footer"><button class="btn btn-ghost" onclick="closeDlg()">Tutup</button></div>`,true);
+    openDlg(`<h3>📋 Create New GRN</h3><div class="empty-state"><div class="empty-icon">📦</div><h4>No eligible PO</h4><p>GRN can be created for POs with status Awaiting Goods or Partial Receipt</p></div><div class="dlg-footer"><button class="btn btn-ghost" onclick="closeDlg()">Close</button></div>`,true);
     return;
   }
   const rows=eligible.map(po=>{
     const draftId=draftMap[po.id];
     const totalRcv=po.items.reduce((s,i)=>s+(i.qtyReceived||0),0);
     const totalQty=po.items.reduce((s,i)=>s+i.qty,0);
-    const baliInfo=po.status==='partial'?`<div style="font-size:11px;color:var(--grey)">Diterima ${totalRcv}/${totalQty} unit</div>`:'';
+    const baliInfo=po.status==='partial'?`<div style="font-size:11px;color:var(--grey)">Received ${totalRcv}/${totalQty} units</div>`:'';
     const btn=draftId
-      ?`<button class="btn btn-ghost btn-xs" onclick="closeDlg();showGrnForm('${po.id}','${draftId}')">Edit Draf</button>`
-      :`<button class="btn btn-primary btn-xs" onclick="closeDlg();showGrnForm('${po.id}',null)">Buat GRN</button>`;
+      ?`<button class="btn btn-ghost btn-xs" onclick="closeDlg();showGrnForm('${po.id}','${draftId}')">Edit Draft</button>`
+      :`<button class="btn btn-primary btn-xs" onclick="closeDlg();showGrnForm('${po.id}',null)">Create GRN</button>`;
     return `<tr>
       <td style="font-weight:700">${po.id}</td><td style="font-size:13px">${po.supplier}</td>
       <td>${po.date}</td>
       <td>${statusPill(po.status)}${baliInfo}</td>
-      <td>${po.items.length} item</td><td style="font-family:Sora">${fmtRM(po.total)}</td>
+      <td>${po.items.length} items</td><td style="font-family:Sora">${fmtRM(po.total)}</td>
       <td>${btn}</td></tr>`;
   }).join('');
-  openDlg(`<h3>📋 Buat GRN Baru — Pilih PO</h3>
+  openDlg(`<h3>📋 Create New GRN — Select PO</h3>
 <div class="tbl-wrap"><table>
-  <thead><tr><th>No. PO</th><th>Pembekal</th><th>Date</th><th>Status</th><th>Item</th><th>Nilai</th><th></th></tr></thead>
+  <thead><tr><th>PO No.</th><th>Supplier</th><th>Date</th><th>Status</th><th>Items</th><th>Value</th><th></th></tr></thead>
   <tbody>${rows}</tbody>
 </table></div>
-<div class="dlg-footer"><button class="btn btn-ghost" onclick="closeDlg()">Tutup</button></div>`,true);
+<div class="dlg-footer"><button class="btn btn-ghost" onclick="closeDlg()">Close</button></div>`,true);
 }
 
 function showGrnForm(poId,grnId){
@@ -2870,16 +2870,16 @@ function editGRN(id){
 function pageHqGRN(){
   const filter=window._grnFilter||'all';
   const shown=filter==='all'?GRNS:GRNS.filter(g=>g.status===filter);
-  const tabs={all:'Semua',draft:'Draf',posted:'Selesai'};
+  const tabs={all:'All',draft:'Draft',posted:'Completed'};
   const tabHtml=Object.entries(tabs).map(([k,v])=>`<button class="${filter===k?'on':''}" onclick="window._grnFilter='${k}';navTo('hq-grn')">${v}</button>`).join('');
   return `<div class="page-head">
-  <div><h2>✅ Goods Received Notes (GRN)</h2><p>Rekod penerimaan barangan dari pembekal</p></div>
-  <button class="btn btn-primary" onclick="showGrnStep1()">+ GRN Baru</button>
+  <div><h2>✅ Goods Received Notes (GRN)</h2><p>Goods receipt records from suppliers</p></div>
+  <button class="btn btn-primary" onclick="showGrnStep1()">+ New GRN</button>
 </div>
 <div class="card">
   <div class="tabs" style="margin-bottom:16px">${tabHtml}</div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>No. GRN</th><th>Rujukan PO</th><th>Pembekal</th><th>No. D/O</th><th>Tarikh GRN</th><th>Nilai (RM)</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>GRN No.</th><th>PO Ref</th><th>Supplier</th><th>D/O No.</th><th>GRN Date</th><th>Value (RM)</th><th>Status</th><th></th></tr></thead>
     <tbody>
       ${shown.length?shown.map(g=>`<tr>
         <td style="font-weight:700">${g.id}</td>
@@ -2892,9 +2892,9 @@ function pageHqGRN(){
         <td><div style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn btn-ghost btn-xs" onclick="viewGRN('${g.id}')">View</button>
           ${g.status==='draft'?`<button class="btn btn-ghost btn-xs" onclick="editGRN('${g.id}')">Edit</button>`:''}
-          <button class="btn btn-ghost btn-xs" onclick="printGRN('${g.id}')" title="Cetak">🖨️</button>
+          <button class="btn btn-ghost btn-xs" onclick="printGRN('${g.id}')" title="Print">🖨️</button>
         </div></td>
-      </tr>`).join(''):`<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📋</div><h4>Tiada GRN${filter!=='all'?' dalam kategori ini':''}</h4><p>Klik '+ GRN Baru' untuk mulakan</p></div></td></tr>`}
+      </tr>`).join(''):`<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📋</div><h4>No GRN${filter!=='all'?' in this category':''}</h4><p>Click '+ New GRN' to start</p></div></td></tr>`}
     </tbody>
   </table></div>
 </div>`;
@@ -2905,26 +2905,26 @@ function viewGRN(id){
   const isDraft=g.status==='draft';
   openDlg(`<h3>📦 ${g.id} ${statusPill(g.status||'posted')}</h3>
 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;font-size:13px">
-  <div><b>Rujukan PO:</b> ${g.poRef}</div>
-  <div><b>No. D/O:</b> ${g.doNo||'—'}</div>
-  <div><b>No. Invois:</b> ${g.invNo||'—'}</div>
-  <div><b>Pembekal:</b> ${g.supplierName||g.supplier||''}</div>
-  <div><b>Tarikh GRN:</b> ${g.grnDate||g.date||''}</div>
-  <div><b>Terma Kredit:</b> ${g.creditTerm||'—'}</div>
-  <div><b>Diterima Oleh:</b> ${g.receivedBy||''}</div>
+  <div><b>PO Ref:</b> ${g.poRef}</div>
+  <div><b>D/O No.:</b> ${g.doNo||'—'}</div>
+  <div><b>Invoice No.:</b> ${g.invNo||'—'}</div>
+  <div><b>Supplier:</b> ${g.supplierName||g.supplier||''}</div>
+  <div><b>GRN Date:</b> ${g.grnDate||g.date||''}</div>
+  <div><b>Credit Terms:</b> ${g.creditTerm||'—'}</div>
+  <div><b>Received By:</b> ${g.receivedBy||''}</div>
 </div>
 <div style="overflow-x:auto">
 <table><thead><tr>
-  <th>Produk</th>
+  <th>Product</th>
   <th style="text-align:center">Qty PO</th>
-  <th style="text-align:center">Qty Terima</th>
+  <th style="text-align:center">Qty Received</th>
   <th style="text-align:center;color:var(--green)">FOC</th>
-  <th style="text-align:right">Harga/Unit</th>
+  <th style="text-align:right">Price/Unit</th>
   <th style="text-align:right">Disc %</th>
   <th style="text-align:right">Disc RM</th>
   <th style="text-align:right">Subtotal</th>
-  <th>No. Batch</th>
-  <th>T. Luput</th>
+  <th>Batch No.</th>
+  <th>Expiry</th>
 </tr></thead>
 <tbody>${(g.items||[]).map(i=>{
   const foc=i.foc||0;
@@ -2942,14 +2942,14 @@ function viewGRN(id){
   </tr>`;
 }).join('')}</tbody></table></div>
 <div style="text-align:right;margin-top:10px;font-size:13px">
-  <span style="margin-right:20px">Jumlah Kecil: <b>${fmtRM(g.subtotal||0)}</b></span>
-  <span style="margin-right:20px">Diskaun: <b>${fmtRM(g.discAmt||0)}</b></span>
-  <span>JUMLAH: <b style="font-size:16px;color:var(--navy)">${fmtRM(g.total||0)}</b></span>
+  <span style="margin-right:20px">Subtotal: <b>${fmtRM(g.subtotal||0)}</b></span>
+  <span style="margin-right:20px">Discount: <b>${fmtRM(g.discAmt||0)}</b></span>
+  <span>TOTAL: <b style="font-size:16px;color:var(--navy)">${fmtRM(g.total||0)}</b></span>
 </div>
 <div class="dlg-footer">
-  ${isDraft?`<button class="btn btn-ghost" onclick="closeDlg();editGRN('${g.id}')">Edit Draf</button>`:''}
-  <button class="btn btn-ghost" onclick="closeDlg()">Tutup</button>
-  <button class="btn btn-ghost" onclick="printGRN('${g.id}')">🖨️ Cetak</button>
+  ${isDraft?`<button class="btn btn-ghost" onclick="closeDlg();editGRN('${g.id}')">Edit Draft</button>`:''}
+  <button class="btn btn-ghost" onclick="closeDlg()">Close</button>
+  <button class="btn btn-ghost" onclick="printGRN('${g.id}')">🖨️ Print</button>
 </div>`,true);
 }
 
