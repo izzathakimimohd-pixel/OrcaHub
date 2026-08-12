@@ -706,6 +706,30 @@ async function loadData(){
   }catch(e){PRODUCTS=SEED_PRODUCTS.map(x=>({...x}));BATCHES=seedBatches();SCANLOG=[];SUPPLIERS=seedSuppliers();CATEGORIES=seedCategories();}
 }
 
+async function resetDemoData(){
+  showConfirm('Reset Data Demo',
+    'Semua data akan dipadam dan diganti data demo asal. Teruskan?',
+    'Ya, Reset',async()=>{
+      const keys=['oh_products','oh_pos','oh_grns','oh_batches',
+        'oh_scanlog','oh_suppliers','oh_categories',
+        'oh_b2b_orders','oh_b2c_orders'];
+      // kumpul juga semua cart per-user
+      try{
+        for(let i=0;i<localStorage.length;i++){
+          const k=localStorage.key(i);
+          if(k && (k.startsWith('oh_b2b_cart_')||k.startsWith('oh_b2c_cart_')))
+            keys.push(k);
+        }
+      }catch(e){}
+      for(const k of keys){
+        try{ if(window.storage?.delete) await window.storage.delete(k); }catch(e){}
+        try{ localStorage.removeItem(k); }catch(e){}
+      }
+      toast('✓ Data demo direset — memuat semula...');
+      setTimeout(()=>location.reload(),700);
+    });
+}
+
 async function saveB2BOrders(){await STORE.set('oh_b2b_orders',JSON.stringify(B2B_ORDERS));}
 async function saveB2COrders(){await STORE.set('oh_b2c_orders',JSON.stringify(B2C_ORDERS));}
 async function savePOs(){await STORE.set('oh_pos',JSON.stringify(POS));}
@@ -3319,6 +3343,10 @@ ${SESSION?.role==='hq'?`<div class="card"><div class="card-h"><h3>📁 Kategori 
   <input id="newCatInp" placeholder="Nama kategori baru..." style="flex:1;padding:10px 14px;border:1.5px solid var(--line);border-radius:var(--radius-sm);background:var(--paper);color:var(--ink)">
   <button class="btn btn-primary btn-sm" onclick="addCategoryFromSettings()">+ Tambah</button>
 </div>
+</div></div>`:''}
+${(SESSION?.role==='superadmin'||SESSION?.role==='hq')?`<div class="card"><div class="card-h"><h3>🔄 Reset Data Demo</h3></div><div class="card-body">
+<p style="margin-bottom:16px;color:var(--grey);line-height:1.55">Semua data semasa (Produk, PO, GRN, Batch, Log Scan, Pembekal, Kategori, Order B2B/B2C, Troli) akan dipadam dan digantikan dengan data demo asal. Tindakan ini tidak boleh dibatalkan.</p>
+<button class="btn btn-primary" style="background:var(--red)" onclick="resetDemoData()">Reset ke Data Demo</button>
 </div></div>`:''}`;
 }
 
