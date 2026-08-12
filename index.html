@@ -1081,44 +1081,44 @@ const MENUS={
     {id:'sa-tenants',  ic:'🏢',label:'Tenants'},
     {id:'sa-plans',    ic:'💎',label:'Subscription Plans'},
     {id:'sa-analytics',ic:'📊',label:'Platform Analytics'},
-    {id:'settings',    ic:'⚙️',label:'Tetapan'},
+    {id:'settings',    ic:'⚙️',label:'Settings'},
   ],
   hq:[
     {id:'hq-dashboard',ic:'🏠',label:'Dashboard'},
     {sect:'B2B Procurement'},
     {id:'hq-b2b-orders',ic:'📋',label:'Order B2B',badge:'b2b'},
-    {id:'hq-catalog',   ic:'📦',label:'Katalog Produk'},
+    {id:'hq-catalog',   ic:'📦',label:'Product Catalog'},
     {id:'hq-batches',   ic:'🗓️',label:'Batch & Expiry',badge:'expiry'},
     {id:'hq-stocktake', ic:'📋',label:'Stocktake'},
-    {id:'hq-scanlog',   ic:'📋',label:'Log Scan'},
-    {id:'hq-suppliers', ic:'🚚',label:'Pembekal'},
+    {id:'hq-scanlog',   ic:'📋',label:'Scan Log'},
+    {id:'hq-suppliers', ic:'🚚',label:'Suppliers'},
     {id:'hq-po',        ic:'📄',label:'Purchase Orders',badge:'po'},
     {id:'hq-grn',       ic:'✅',label:'GRN'},
     {sect:'B2C Commerce'},
     {id:'hq-b2c-orders',ic:'🛒',label:'Order B2C',badge:'b2c'},
-    {sect:'Laporan'},
-    {id:'hq-purchase-report',ic:'🧾',label:'Laporan Pembelian'},
-    {id:'hq-analytics', ic:'📊',label:'Analitik'},
-    {id:'settings',     ic:'⚙️',label:'Tetapan'},
+    {sect:'Reports'},
+    {id:'hq-purchase-report',ic:'🧾',label:'Purchase Report'},
+    {id:'hq-analytics', ic:'📊',label:'Analytics'},
+    {id:'settings',     ic:'⚙️',label:'Settings'},
   ],
   branch:[
     {id:'b2b-shop',    ic:'🏠',label:'Dashboard'},
-    {id:'b2b-order',   ic:'🛒',label:'Order Baru',badge:'cart'},
-    {id:'b2b-myorders',ic:'📋',label:'Order Saya'},
-    {id:'settings',    ic:'⚙️',label:'Tetapan'},
+    {id:'b2b-order',   ic:'🛒',label:'New Order',badge:'cart'},
+    {id:'b2b-myorders',ic:'📋',label:'My Orders'},
+    {id:'settings',    ic:'⚙️',label:'Settings'},
   ],
   customer:[
-    {id:'b2c-store',   ic:'🏠',label:'Kedai'},
-    {id:'b2c-cart',    ic:'🛒',label:'Troli',badge:'cart'},
-    {id:'b2c-orders',  ic:'📋',label:'Order Saya'},
-    {id:'settings',    ic:'⚙️',label:'Tetapan'},
+    {id:'b2c-store',   ic:'🏠',label:'Store'},
+    {id:'b2c-cart',    ic:'🛒',label:'Cart',badge:'cart'},
+    {id:'b2c-orders',  ic:'📋',label:'My Orders'},
+    {id:'settings',    ic:'⚙️',label:'Settings'},
   ],
   supplier:[
     {id:'sup-dashboard',ic:'🏠',label:'Dashboard'},
-    {id:'sup-products', ic:'📦',label:'Produk Saya'},
+    {id:'sup-products', ic:'📦',label:'My Products'},
     {id:'sup-po',       ic:'📄',label:'Incoming PO',badge:'po'},
-    {id:'sup-delivery', ic:'🚚',label:'Penghantaran'},
-    {id:'settings',     ic:'⚙️',label:'Tetapan'},
+    {id:'sup-delivery', ic:'🚚',label:'Delivery'},
+    {id:'settings',     ic:'⚙️',label:'Settings'},
   ],
 };
 
@@ -1155,11 +1155,11 @@ function navTo(page){
   buildSidebar();
   renderPage();
   const labels={'sa-dashboard':'Dashboard','sa-tenants':'Tenants','sa-plans':'Subscription Plans','sa-analytics':'Analytics',
-    'hq-dashboard':'Dashboard','hq-b2b-orders':'Order B2B','hq-catalog':'Katalog','hq-batches':'Batch & Expiry','hq-scanlog':'Log Scan','hq-suppliers':'Pembekal','hq-po':'Purchase Orders','hq-grn':'GRN','hq-grn-form':'Borang GRN','hq-stocktake':'Stocktake','hq-b2c-orders':'Order B2C','hq-purchase-report':'Laporan Pembelian','hq-analytics':'Analitik',
-    'b2b-shop':'Dashboard','b2b-order':'Order Baru','b2b-myorders':'Order Saya',
-    'b2c-store':'Kedai','b2c-cart':'Troli','b2c-orders':'Order Saya',
-    'sup-dashboard':'Dashboard','sup-products':'Produk Saya','sup-po':'Incoming PO','sup-delivery':'Penghantaran',
-    'settings':'Tetapan'};
+    'hq-dashboard':'Dashboard','hq-b2b-orders':'Order B2B','hq-catalog':'Catalog','hq-batches':'Batch & Expiry','hq-scanlog':'Scan Log','hq-suppliers':'Suppliers','hq-po':'Purchase Orders','hq-grn':'GRN','hq-grn-form':'GRN Form','hq-stocktake':'Stocktake','hq-b2c-orders':'Order B2C','hq-purchase-report':'Purchase Report','hq-analytics':'Analytics',
+    'b2b-shop':'Dashboard','b2b-order':'New Order','b2b-myorders':'My Orders',
+    'b2c-store':'Store','b2c-cart':'Cart','b2c-orders':'My Orders',
+    'sup-dashboard':'Dashboard','sup-products':'My Products','sup-po':'Incoming PO','sup-delivery':'Delivery',
+    'settings':'Settings'};
   document.getElementById('breadcrumb').innerHTML=`<b>${labels[page]||page}</b>`;
 }
 
@@ -1518,7 +1518,7 @@ function showPrintLabel(batchId){
   const exCol=expiryStatus(b.expiry)==='expired'?'var(--red)':expiryStatus(b.expiry)==='critical'?'var(--orange)':'var(--green)';
   openDlg(`<h3>🖨️ Label Batch</h3>
 <div style="border:2px dashed var(--line);border-radius:var(--radius);padding:24px;text-align:center;margin-bottom:16px">
-  <div style="font-size:16px;font-weight:700;margin-bottom:4px">${p?p.emoji+' '+p.name:b.pid}</div>
+  <div style="font-size:16px;font-weight:700;margin-bottom:4px">${p?p.name:b.pid}</div>
   <div style="font-family:monospace;font-size:26px;font-weight:800;letter-spacing:3px;color:var(--navy);background:var(--sand);padding:12px 20px;border-radius:8px;margin:14px 0;display:inline-block;border:1px solid var(--line)">${code}</div>
   <div style="font-size:13px;color:var(--grey);line-height:2">
     <div>No. Batch: <strong style="color:var(--ink)">${b.batchNo}</strong></div>
@@ -1617,7 +1617,7 @@ function pageHqBatches(){
         const rowBg=st==='expired'?'background:var(--red-l)':st==='critical'?'background:var(--orange-l)':st==='warning'?'background:#fffbeb':'';
         const code=batchCode(b);
         return`<tr style="${rowBg}">
-          <td><div style="display:flex;align-items:center;gap:6px"><span>${p?p.emoji:'📦'}</span><span style="font-weight:600">${p?p.name:b.pid}</span></div></td>
+          <td><div style="display:flex;align-items:center;gap:6px"><span style="font-weight:600">${p?p.name:b.pid}</span></div></td>
           <td style="font-family:monospace;font-weight:600">${b.batchNo}</td>
           <td><code style="background:var(--sand);padding:3px 8px;border-radius:6px;font-size:12px;cursor:pointer;user-select:all;border:1px solid var(--line)" title="Klik untuk salin" onclick="navigator.clipboard.writeText('${code}');toast('✓ Kod disalin')">${code}</code></td>
           <td><span class="pill ${b.qty<=0?'p-cancel':b.qty<50?'p-new':'p-done'}">${b.qty} unit</span></td>
@@ -1915,7 +1915,7 @@ function viewB2bOrder(id){
 </div>
 <table><thead><tr><th>Produk</th><th>Qty</th><th>Harga</th><th>Subtotal</th></tr></thead>
 <tbody>${o.items.map(i=>`<tr>
-  <td>${pemoji(i.pid)} ${pname(i.pid)}</td>
+  <td>${pname(i.pid)}</td>
   <td>${i.qty}</td><td>${fmtRM(i.price)}</td>
   <td style="font-weight:600">${fmtRM(i.qty*i.price)}</td>
 </tr>`).join('')}
@@ -1957,7 +1957,7 @@ function showB2bFEFODialog(o){
       return`<div style="background:var(--sand);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;flex-wrap:wrap;gap:6px">
           <div>
-            <span style="font-weight:600">${pr?pr.emoji+' '+pr.name:i.pid}</span>
+            <span style="font-weight:600">${pr?pr.name:i.pid}</span>
             <span style="font-size:12px;color:var(--grey);margin-left:8px">Ambil <strong>${a.take}</strong> unit dari
               <code style="background:var(--paper);padding:2px 6px;border-radius:4px">${code}</code>
               — luput <strong style="color:${exCol}">${a.expiry}</strong>
@@ -2079,7 +2079,7 @@ function pageHqCatalog(){
     <thead><tr><th>Produk</th><th>Kategori</th><th>Unit</th><th>Harga Supplier</th><th>Harga B2B</th><th>Harga B2C</th><th>Stok (FEFO)</th><th></th></tr></thead>
     <tbody id="catTbody">
       ${shown.map(p=>{const ds=BATCHES.some(b=>b.pid===p.id)?totalStock(p.id):p.stock;const nearBatch=getBatches(p.id)[0];const nearExColor=nearBatch?{expired:'var(--red)',critical:'var(--orange)',warning:'#92400e',ok:'var(--green)'}[expiryStatus(nearBatch.expiry)]:'';return`<tr>
-        <td><div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px">${p.emoji}</span><div style="font-weight:600;font-size:13px">${p.name}</div></div></td>
+        <td><div style="display:flex;align-items:center;gap:8px"><div style="font-weight:600;font-size:13px">${p.name}</div></div></td>
         <td><span style="font-size:12px;color:var(--grey)">${p.cat}</span></td>
         <td>${p.unit}</td>
         <td>${fmtRM(p.supplierPrice)}</td>
@@ -2105,7 +2105,7 @@ function filterCatalog(q){
     const nearBatch=getBatches(p.id)[0];
     const nearExColor=nearBatch?{expired:'var(--red)',critical:'var(--orange)',warning:'#92400e',ok:'var(--green)'}[expiryStatus(nearBatch.expiry)]:'';
     return`<tr>
-      <td><div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px">${p.emoji}</span><div style="font-weight:600;font-size:13px">${p.name}</div></div></td>
+      <td><div style="display:flex;align-items:center;gap:8px"><div style="font-weight:600;font-size:13px">${p.name}</div></div></td>
       <td><span style="font-size:12px;color:var(--grey)">${p.cat}</span></td>
       <td>${p.unit}</td>
       <td>${fmtRM(p.supplierPrice)}</td>
@@ -2338,7 +2338,7 @@ ${supField}
       ${PRODUCTS.map(p=>`<tr style="border-bottom:1px solid var(--line)">
         <td style="padding:8px 12px">
           <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:18px">${p.emoji}</span>
+            
             <div>
               <div style="font-weight:600;font-size:13px">${p.name}</div>
               <div style="font-size:11px;color:var(--grey)">${p.cat} · Stok: ${p.stock}</div>
@@ -2441,7 +2441,7 @@ function viewPO(id){
   <th style="text-align:right">Subtotal</th>
 </tr></thead>
 <tbody>${po.items.map(i=>`<tr>
-  <td>${pemoji(i.pid)} ${pname(i.pid)}</td>
+  <td>${pname(i.pid)}</td>
   <td style="text-align:center">${i.qty}</td>
   <td style="text-align:center">
     ${(i.foc||0)>0
@@ -2472,7 +2472,7 @@ function printPO(id){
   const sup=SUPPLIERS.find(s=>s.name===po.supplier)||{};
   const totalFoc=po.items.reduce((s,i)=>s+(i.foc||0),0);
   const rows=po.items.map(i=>`<tr>
-    <td>${pemoji(i.pid)} ${pname(i.pid)}</td>
+    <td>${pname(i.pid)}</td>
     <td style="text-align:center">${i.qty}</td>
     <td style="text-align:center">${(i.foc||0)>0?`+${i.foc} FOC`:'-'}</td>
     <td style="text-align:center">RM${(i.price||0).toFixed(2)}</td>
@@ -2573,7 +2573,7 @@ function buildGrnRowCells(rid,pid,qtyPO,qtyRcv,item){
   const bakiStyle=isComplete?'color:var(--green);font-weight:700':'';
   const nameTag=isComplete?' <span style="font-size:10px;background:#e6f7ee;color:#0f6e56;padding:1px 7px;border-radius:10px;white-space:nowrap">✓ Lengkap</span>':'';
   return `
-    <td style="white-space:nowrap;min-width:150px">${pr.emoji||''} ${pr.name||pid}${nameTag}</td>
+    <td style="white-space:nowrap;min-width:150px">${pr.name||pid}${nameTag}</td>
     <td style="text-align:center">${qtyPO||'—'}</td>
     <td style="text-align:center;color:var(--green);font-weight:600">${qtyRcv||'—'}</td>
     <td style="text-align:center;${bakiStyle}">${isComplete?'0':(baki||'—')}</td>
@@ -2591,7 +2591,7 @@ function buildGrnRowCells(rid,pid,qtyPO,qtyRcv,item){
 function addGrnExtraRow(){
   const tbody=document.getElementById('grnFormTbody');if(!tbody)return;
   const rid='r'+(++_grnRidCounter);
-  const pidOpts=PRODUCTS.map(p=>`<option value="${p.id}">${p.emoji} ${p.name}</option>`).join('');
+  const pidOpts=PRODUCTS.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
   const tr=document.createElement('tr');
   tr.setAttribute('data-rowid',rid);
   tr.setAttribute('data-pid','');
@@ -2930,7 +2930,7 @@ function viewGRN(id){
 <tbody>${(g.items||[]).map(i=>{
   const foc=i.foc||0;
   return `<tr>
-    <td>${pemoji(i.pid)} ${pname(i.pid)}</td>
+    <td>${pname(i.pid)}</td>
     <td style="text-align:center">${i.qtyOrdered??i.qty}</td>
     <td style="text-align:center;font-weight:600">${i.qty}</td>
     <td style="text-align:center">${foc>0?`<span style="background:var(--green-l);color:var(--green);padding:2px 8px;border-radius:10px;font-weight:700;font-size:12px">+${foc}</span>`:`<span style="color:var(--line)">—</span>`}</td>
@@ -2959,7 +2959,7 @@ function printGRN(id){
   const sup=SUPPLIERS.find(s=>s.name===(g.supplierName||g.supplier))||{};
   const w=window.open('','_blank');if(!w)return;
   const itemRows=(g.items||[]).map((i,idx)=>`<tr>
-    <td>${idx+1}</td><td>${pemoji(i.pid)} ${pname(i.pid)}</td>
+    <td>${idx+1}</td><td>${pname(i.pid)}</td>
     <td style="text-align:center">${i.qty}</td>
     <td style="text-align:center">${(i.foc||0)||'—'}</td>
     <td style="text-align:right">${(i.unitPrice||0).toFixed(2)}</td>
@@ -3195,7 +3195,7 @@ function viewB2cOrder(id){
 </div>
 <table><thead><tr><th>Produk</th><th>Qty</th><th>Harga B2C</th><th>Subtotal</th></tr></thead>
 <tbody>${o.items.map(i=>`<tr>
-  <td>${pemoji(i.pid)} ${pname(i.pid)}</td>
+  <td>${pname(i.pid)}</td>
   <td>${i.qty}</td><td>${fmtRM(i.price)}</td>
   <td style="font-weight:600">${fmtRM(i.qty*i.price)}</td>
 </tr>`).join('')}
@@ -3385,7 +3385,7 @@ function pageB2bOrder(){
         const inCart=B2B_CART[p.id]||0;
         const sub=inCart*p.b2bPrice;
         return `<tr>
-          <td><div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">${p.emoji}</span><div style="font-weight:600;font-size:13px">${p.name}</div></div></td>
+          <td><div style="display:flex;align-items:center;gap:8px"><div style="font-weight:600;font-size:13px">${p.name}</div></div></td>
           <td style="font-size:12px;color:var(--grey)">${p.cat}</td>
           <td style="font-weight:700;color:var(--navy)">${fmtRM(p.b2bPrice)}</td>
           <td><span class="pill ${p.stock<=0?'p-cancel':p.stock<50?'p-new':'p-done'}">${p.stock}</span></td>
@@ -3419,7 +3419,7 @@ function filterB2bOrder(q){
   tb.innerHTML=shown.map(p=>{
     const inCart=B2B_CART[p.id]||0;const sub=inCart*p.b2bPrice;
     return `<tr>
-      <td><div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">${p.emoji}</span><div style="font-weight:600;font-size:13px">${p.name}</div></div></td>
+      <td><div style="display:flex;align-items:center;gap:8px"><div style="font-weight:600;font-size:13px">${p.name}</div></div></td>
       <td style="font-size:12px;color:var(--grey)">${p.cat}</td>
       <td style="font-weight:700;color:var(--navy)">${fmtRM(p.b2bPrice)}</td>
       <td><span class="pill ${p.stock<=0?'p-cancel':p.stock<50?'p-new':'p-done'}">${p.stock}</span></td>
@@ -3497,7 +3497,7 @@ function pageB2cStore(){
   ${shown.length?shown.map(p=>{
     const inCart=B2C_CART[p.id]||0;
     return `<div class="prod-card">
-      <div class="prod-img">${p.emoji}</div>
+      <div class="prod-img"></div>
       <div class="prod-info">
         <div class="prod-cat">${p.cat}</div>
         <div class="prod-name">${p.name}</div>
@@ -3537,7 +3537,7 @@ function filterB2cStore(q){
   grid.innerHTML=shown.length?shown.map(p=>{
     const inCart=B2C_CART[p.id]||0;
     return `<div class="prod-card">
-      <div class="prod-img">${p.emoji}</div>
+      <div class="prod-img"></div>
       <div class="prod-info">
         <div class="prod-cat">${p.cat}</div>
         <div class="prod-name">${p.name}</div>
@@ -3576,7 +3576,7 @@ function pageB2cCart(){
 ${items.length===0?`<div class="card"><div class="card-body"><div class="empty-state"><div class="empty-icon">🛒</div><h4>Troli kosong</h4><p>Tambah produk dari <a href="#" onclick="navTo('b2c-store')">kedai</a></p></div></div></div>`:`
 <div class="card">
   ${items.map(({p,pid,qty})=>`<div class="prod-row">
-    <div class="pemoji">${p.emoji}</div>
+    <div class="pemoji"></div>
     <div class="prod-row-info"><div class="pname">${p.name}</div><div class="pcat">${p.cat}</div></div>
     <div class="cart-qty-wrap">
       <button onclick="updateCartQty('${pid}',${qty-1})">−</button>
@@ -3646,7 +3646,7 @@ function pageB2cMyOrders(){
     </div>
     <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px">
       ${o.items.map(i=>`<div style="background:var(--sand);padding:5px 10px;border-radius:8px;font-size:12px;display:flex;align-items:center;gap:5px">
-        <span>${pemoji(i.pid)}</span><span>${pname(i.pid)}</span><span style="color:var(--grey)">×${i.qty}</span>
+        <span>${pname(i.pid)}</span><span style="color:var(--grey)">×${i.qty}</span>
       </div>`).join('')}
     </div>
     ${o.status==='done'?'<div style="font-size:12px;color:var(--green);margin-top:8px;font-weight:600">✓ Telah dihantar ke: '+o.addr+'</div>':''}
@@ -3690,7 +3690,7 @@ function pageSupProducts(){
 <div class="card">
   <div class="card-h"><h3>Produk (${PRODUCTS.length})</h3></div>
   ${PRODUCTS.map(p=>`<div class="prod-row">
-    <div class="pemoji">${p.emoji}</div>
+    <div class="pemoji"></div>
     <div class="prod-row-info">
       <div class="pname">${p.name}</div>
       <div class="pcat">${p.cat} · ${p.unit} · ${p.perCtn}/CTN</div>
