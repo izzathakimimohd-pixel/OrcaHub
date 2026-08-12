@@ -1676,7 +1676,7 @@ function pageStocktake(){
           <td>${st.lines.length}</td>
           <td>${varc?`<span style="color:var(--orange);font-weight:700">${varc}</span>`:'0'}</td>
           <td><span class="pill ${sm[0]}">${sm[1]}</span></td>
-          <td><button class="btn btn-ghost btn-xs" onclick="${act}">Lihat</button></td>
+          <td><div style="display:flex;gap:6px"><button class="btn btn-ghost btn-xs" onclick="${act}">Lihat</button><button class="btn btn-ghost btn-xs" onclick="printStocktakeReport('${st.id}')">Print</button></div></td>
         </tr>`;
       }).join(''):`<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">📋</div><h4>Tiada stocktake</h4><p>Tekan "+ Stocktake Baru" untuk mula kiraan fizikal</p></div></td></tr>`}
     </tbody>
@@ -1707,8 +1707,11 @@ function renderStocktakeReview(st){
 </div>
 <div class="card">
   <div class="card-h"><h3>Semakan Selisih</h3>
-    ${st.status==='pending_review'&&varLines.length?`<button class="btn btn-primary btn-sm" onclick="applyStocktake('${st.id}')">Apply Semua Adjustment</button>`:''}
-    ${st.status==='applied'?`<span class="pill p-done">Telah Diterapkan oleh ${st.appliedBy||'—'}</span>`:''}
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="printStocktakeReport('${st.id}')">Print Report</button>
+      ${st.status==='pending_review'&&varLines.length?`<button class="btn btn-primary btn-sm" onclick="applyStocktake('${st.id}')">Apply Semua Adjustment</button>`:''}
+      ${st.status==='applied'?`<span class="pill p-done">Telah Diterapkan oleh ${st.appliedBy||'—'}</span>`:''}
+    </div>
   </div>
   <div class="tbl-wrap"><table>
     <thead><tr><th>Produk</th><th>Batch</th><th>Expiry</th><th>Qty Sistem</th><th>Qty Fizikal</th><th>Selisih</th><th>Nilai Selisih (RM)</th></tr></thead>
@@ -1761,7 +1764,10 @@ function pageStocktakeCount(){
 </div>
 <div class="card">
   <div class="card-h"><h3>Kiraan Batch (${st.lines.length})</h3>
-    <div style="font-size:12px;color:var(--grey)">Dikira: <b id="stSumCounted">${counted}</b>/${st.lines.length} · Selisih: <b id="stSumVariance" style="color:var(--orange)">${varc}</b> · <span style="font-style:italic">Nilai pada kos belian (supplier price)</span></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="font-size:12px;color:var(--grey)">Dikira: <b id="stSumCounted">${counted}</b>/${st.lines.length} · Selisih: <b id="stSumVariance" style="color:var(--orange)">${varc}</b> · <span style="font-style:italic">Nilai pada kos belian (supplier price)</span></div>
+      <button class="btn btn-ghost btn-sm" onclick="printStocktakeCountSheet('${st.id}')">Print Count Sheet</button>
+    </div>
   </div>
   <div class="tbl-wrap"><table>
     <thead><tr><th>Produk</th><th>Batch</th><th>Expiry</th><th>Qty Sistem</th><th>Qty Fizikal</th><th>Selisih</th><th>Nilai Selisih (RM)</th></tr></thead>
@@ -1785,6 +1791,7 @@ function pageStocktakeCount(){
   <div class="card-body" style="display:flex;gap:10px;border-top:1px solid var(--line)">
     <button class="btn btn-ghost" onclick="stSaveDraft()">Simpan Draf</button>
     <button class="btn btn-primary" onclick="finishStocktake()">Selesai & Semak</button>
+    <button class="btn btn-ghost" onclick="printStocktakeCountSheet('${st.id}')">Print Count Sheet</button>
   </div>
 </div>`;
 }
@@ -3001,6 +3008,125 @@ table{width:100%;border-collapse:collapse;margin-bottom:12px}th,td{border:1px so
   <div class="sig"><div class="sig-line"></div><div>Disediakan oleh</div></div>
   <div class="sig"><div class="sig-line"></div><div>Disemak oleh (HQ)</div></div>
   <div class="sig"><div class="sig-line"></div><div>Pengesahan Pembekal</div></div>
+</div>
+<script>window.onload=function(){window.print();window.onafterprint=function(){window.close();}}<\/script>
+</body></html>`);
+  w.document.close();
+}
+
+// ===== STOCKTAKE PRINT (English, no emoji) =====
+const ST_PRINT_CSS=`*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:12px;padding:20mm 15mm;color:#000}
+.co{font-size:18px;font-weight:700;margin-bottom:2px}.doc-title{font-size:16px;font-weight:700;text-align:center;margin:14px 0 10px;text-transform:uppercase;letter-spacing:1px}
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:6px 20px;font-size:12px;margin-bottom:14px}.lbl{color:#555;font-size:11px}
+table{width:100%;border-collapse:collapse;margin-bottom:12px}th,td{border:1px solid #333;padding:5px 7px;font-size:11px}th{background:#eee;font-weight:700}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.sbox{border:1px solid #333;padding:8px 10px}.sbox .sl{font-size:10px;color:#555;text-transform:uppercase}.sbox .sv{font-size:15px;font-weight:700;margin-top:2px}
+.tot{text-align:right;font-size:13px;margin-top:8px}.tot td{border:none;padding:2px 6px}
+.sig-row{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:40px}
+.sig{text-align:center;font-size:11px}.sig-line{border-top:1px solid #333;margin-top:35px;margin-bottom:4px}
+@media print{body{padding:15mm 12mm}}`;
+
+function printStocktakeCountSheet(stId){
+  const st=STOCKTAKES.find(x=>x.id===stId);if(!st)return;
+  const w=window.open('','_blank');if(!w)return;
+  const rows=st.lines.map((ln,idx)=>{
+    const pr=PRODUCTS.find(p=>p.id===ln.pid);
+    const nm=pr?.name||ln.pid;
+    return `<tr>
+      <td style="text-align:center">${idx+1}</td>
+      <td>${nm}</td>
+      <td>${ln.batchNo||'—'}</td>
+      <td style="text-align:center">${ln.expiry||'—'}</td>
+      <td style="text-align:center">${ln.sysQty}</td>
+      <td>&nbsp;</td>
+      <td>&nbsp;</td>
+    </tr>`;
+  }).join('');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Stock Count Sheet ${st.id}</title>
+<style>${ST_PRINT_CSS}</style></head><body>
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+  <div><div class="co">OrcaHub Sdn Bhd</div><div style="font-size:11px;color:#555">Pharmacy Management System</div></div>
+  <div style="text-align:right;font-size:11px"><div><b>Stocktake ID: ${st.id}</b></div><div>Date: ${st.date}</div></div>
+</div>
+<div class="doc-title">Stock Count Sheet</div>
+<div class="meta">
+  <div><span class="lbl">Stocktake ID: </span>${st.id}</div>
+  <div><span class="lbl">Date: </span>${st.date}</div>
+  <div><span class="lbl">Counted By: </span>______________________</div>
+  <div><span class="lbl">Total Batches: </span>${st.lines.length}</div>
+</div>
+<table><thead><tr>
+  <th style="width:28px">No</th><th>Product</th><th style="width:95px">Batch No</th>
+  <th style="width:80px">Expiry</th><th style="text-align:center;width:55px">System Qty</th>
+  <th style="width:120px">Physical Count</th><th style="width:120px">Remarks</th>
+</tr></thead><tbody>${rows}</tbody></table>
+<div class="sig-row">
+  <div class="sig"><div class="sig-line"></div><div>Counted By</div></div>
+  <div class="sig"><div class="sig-line"></div><div>Verified By</div></div>
+</div>
+<script>window.onload=function(){window.print();window.onafterprint=function(){window.close();}}<\/script>
+</body></html>`);
+  w.document.close();
+}
+
+function printStocktakeReport(stId){
+  const st=STOCKTAKES.find(x=>x.id===stId);if(!st)return;
+  const w=window.open('','_blank');if(!w)return;
+  const statusMap={draft:'Draft',pending_review:'Reviewed',applied:'Applied'};
+  let netVal=0, varCount=0;
+  const rows=st.lines.map((ln,idx)=>{
+    const pr=PRODUCTS.find(p=>p.id===ln.pid);
+    const nm=pr?.name||ln.pid;
+    const cost=pr?.supplierPrice||0;
+    const hasPhys=ln.physQty!=null;
+    const variance=hasPhys?(ln.physQty-ln.sysQty):null;
+    const valv=hasPhys?variance*cost:0;
+    if(hasPhys){netVal+=valv;if(variance!==0)varCount++;}
+    const vCol=(variance!=null&&variance<0)?'color:#c00;font-weight:700':'';
+    return `<tr>
+      <td style="text-align:center">${idx+1}</td>
+      <td>${nm}</td>
+      <td>${ln.batchNo||'—'}</td>
+      <td style="text-align:center">${ln.expiry||'—'}</td>
+      <td style="text-align:center">${ln.sysQty}</td>
+      <td style="text-align:center">${hasPhys?ln.physQty:'—'}</td>
+      <td style="text-align:center;${vCol}">${variance==null?'—':(variance>0?'+'+variance:variance)}</td>
+      <td style="text-align:right;${vCol}">${hasPhys?'RM '+valv.toFixed(2):'—'}</td>
+    </tr>`;
+  }).join('');
+  const netCol=netVal<0?'color:#c00':'';
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Stocktake Report ${st.id}</title>
+<style>${ST_PRINT_CSS}</style></head><body>
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+  <div><div class="co">OrcaHub Sdn Bhd</div><div style="font-size:11px;color:#555">Pharmacy Management System</div></div>
+  <div style="text-align:right;font-size:11px"><div><b>Stocktake ID: ${st.id}</b></div><div>Date: ${st.date}</div></div>
+</div>
+<div class="doc-title">Stocktake Report</div>
+<div class="meta">
+  <div><span class="lbl">Stocktake ID: </span>${st.id}</div>
+  <div><span class="lbl">Date: </span>${st.date}</div>
+  <div><span class="lbl">Counted By: </span>${st.by||'—'}</div>
+  <div><span class="lbl">Status: </span>${statusMap[st.status]||st.status}</div>
+  ${st.appliedBy?`<div><span class="lbl">Applied By: </span>${st.appliedBy}</div>`:''}
+  ${st.appliedAt?`<div><span class="lbl">Applied At: </span>${new Date(st.appliedAt).toLocaleString('en-GB')}</div>`:''}
+</div>
+<div class="summary">
+  <div class="sbox"><div class="sl">Total Batches</div><div class="sv">${st.lines.length}</div></div>
+  <div class="sbox"><div class="sl">Batches with Variance</div><div class="sv">${varCount}</div></div>
+  <div class="sbox"><div class="sl">Net Variance Value (RM)</div><div class="sv" style="${netCol}">RM ${netVal.toFixed(2)}</div></div>
+</div>
+<table><thead><tr>
+  <th style="width:28px">No</th><th>Product</th><th style="width:95px">Batch No</th>
+  <th style="width:75px">Expiry</th><th style="text-align:center;width:55px">System Qty</th>
+  <th style="text-align:center;width:55px">Physical Qty</th><th style="text-align:center;width:60px">Variance</th>
+  <th style="text-align:right;width:95px">Variance Value (RM)</th>
+</tr></thead><tbody>${rows}</tbody></table>
+<table class="tot" style="width:auto;margin-left:auto">
+  <tr><td style="font-weight:700;font-size:14px">Total Variance Value:</td><td style="font-weight:700;font-size:14px;${netCol}">RM ${netVal.toFixed(2)}</td></tr>
+</table>
+<div class="sig-row">
+  <div class="sig"><div class="sig-line"></div><div>Prepared By</div></div>
+  <div class="sig"><div class="sig-line"></div><div>Approved By</div></div>
 </div>
 <script>window.onload=function(){window.print();window.onafterprint=function(){window.close();}}<\/script>
 </body></html>`);
