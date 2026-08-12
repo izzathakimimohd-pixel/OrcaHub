@@ -1315,16 +1315,16 @@ function pageSaDashboard(){
   const activeTenants=SEED_TENANTS.filter(t=>t.status==='active').length;
   const mrr=SEED_TENANTS.reduce((s,t)=>s+t.mrr,0);
   const totalUsers=SEED_TENANTS.reduce((s,t)=>s+t.users,0);
-  return `<div class="page-head"><h2>🛡️ Platform Dashboard</h2><p>Gambaran keseluruhan platform OrcaHub</p></div>
+  return `<div class="page-head"><h2>🛡️ Platform Dashboard</h2><p>OrcaHub platform overview</p></div>
 <div class="kpis">
-  <div class="kpi kn"><div class="lbl">Total Tenants</div><div class="val">${totalTenants}</div><div class="sub trend-up">↑ 2 bulan ini</div></div>
-  <div class="kpi ko"><div class="lbl">MRR</div><div class="val">${fmtRM(mrr)}</div><div class="sub trend-up">↑ 12% vs bulan lepas</div></div>
-  <div class="kpi kg"><div class="lbl">Tenant Aktif</div><div class="val">${activeTenants}</div><div class="sub">${totalTenants-activeTenants} dalam trial</div></div>
-  <div class="kpi kp"><div class="lbl">Total Pengguna</div><div class="val">${totalUsers}</div><div class="sub">Semua tenant</div></div>
+  <div class="kpi kn"><div class="lbl">Total Tenants</div><div class="val">${totalTenants}</div><div class="sub trend-up">↑ 2 this month</div></div>
+  <div class="kpi ko"><div class="lbl">MRR</div><div class="val">${fmtRM(mrr)}</div><div class="sub trend-up">↑ 12% vs last month</div></div>
+  <div class="kpi kg"><div class="lbl">Active Tenants</div><div class="val">${activeTenants}</div><div class="sub">${totalTenants-activeTenants} in trial</div></div>
+  <div class="kpi kp"><div class="lbl">Total Users</div><div class="val">${totalUsers}</div><div class="sub">All tenants</div></div>
 </div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
   <div class="card">
-    <div class="card-h"><h3>📊 MRR Mengikut Plan</h3></div>
+    <div class="card-h"><h3>📊 MRR by Plan</h3></div>
     <div class="card-body">
       <div class="bar-chart">
         ${[['Enterprise',3200,5000,'orange'],['Pro',598,5000,'navy'],['Starter',198,5000,'teal']].map(([l,v,m,c])=>`
@@ -1337,13 +1337,13 @@ function pageSaDashboard(){
     </div>
   </div>
   <div class="card">
-    <div class="card-h"><h3>🏢 Tenant Terkini</h3></div>
+    <div class="card-h"><h3>🏢 Recent Tenants</h3></div>
     <div class="tbl-wrap">
-      <table><thead><tr><th>Syarikat</th><th>Plan</th><th>Status</th></tr></thead><tbody>
+      <table><thead><tr><th>Company</th><th>Plan</th><th>Status</th></tr></thead><tbody>
         ${SEED_TENANTS.slice(0,5).map(t=>`<tr>
           <td><div style="font-weight:600">${t.name}</div><div style="font-size:12px;color:var(--grey)">${t.industry}</div></td>
           <td><span class="badge badge-${t.plan}">${t.plan.toUpperCase()}</span></td>
-          <td><span class="pill ${t.status==='active'?'p-done':'p-new'}">${t.status==='active'?'Aktif':'Trial'}</span></td>
+          <td><span class="pill ${t.status==='active'?'p-done':'p-new'}">${t.status==='active'?'Active':'Trial'}</span></td>
         </tr>`).join('')}
       </tbody></table>
     </div>
@@ -1352,24 +1352,24 @@ function pageSaDashboard(){
 }
 
 function pageSaTenants(){
-  return `<div class="page-head"><h2>🏢 Tenant Management</h2><p>Urus semua syarikat yang menggunakan platform OrcaHub</p></div>
+  return `<div class="page-head"><h2>🏢 Tenant Management</h2><p>Manage all companies using the OrcaHub platform</p></div>
 <div class="card">
   <div class="card-h">
-    <h3>Senarai Tenant (${SEED_TENANTS.length})</h3>
-    <button class="btn btn-primary btn-sm" onclick="showAddTenant()">+ Tambah Tenant</button>
+    <h3>Tenant List (${SEED_TENANTS.length})</h3>
+    <button class="btn btn-primary btn-sm" onclick="showAddTenant()">+ Add Tenant</button>
   </div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Syarikat</th><th>Industri</th><th>Plan</th><th>Pengguna</th><th>Cawangan</th><th>MRR</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>Company</th><th>Industry</th><th>Plan</th><th>Users</th><th>Branches</th><th>MRR</th><th>Status</th><th></th></tr></thead>
     <tbody>
       ${SEED_TENANTS.map(t=>`<tr>
-        <td><div style="font-weight:700">${t.name}</div><div style="font-size:12px;color:var(--grey)">Daftar: ${t.joined}</div></td>
+        <td><div style="font-weight:700">${t.name}</div><div style="font-size:12px;color:var(--grey)">Joined: ${t.joined}</div></td>
         <td>${t.industry}</td>
         <td><span class="badge badge-${t.plan}">${t.plan.toUpperCase()}</span></td>
         <td style="text-align:center">${t.users}</td>
         <td style="text-align:center">${t.branches}</td>
-        <td style="font-weight:700;font-family:'Sora'">${fmtRM(t.mrr)}/bln</td>
-        <td><span class="pill ${t.status==='active'?'p-done':'p-new'}">${t.status==='active'?'Aktif':'Trial'}</span></td>
-        <td><button class="btn btn-ghost btn-xs" onclick="toast('Detail ${t.name}')">Lihat</button></td>
+        <td style="font-weight:700;font-family:'Sora'">${fmtRM(t.mrr)}/mo</td>
+        <td><span class="pill ${t.status==='active'?'p-done':'p-new'}">${t.status==='active'?'Active':'Trial'}</span></td>
+        <td><button class="btn btn-ghost btn-xs" onclick="toast('Detail ${t.name}')">View</button></td>
       </tr>`).join('')}
     </tbody>
   </table></div>
@@ -1377,47 +1377,47 @@ function pageSaTenants(){
 }
 
 function showAddTenant(){
-  openDlg(`<h3>➕ Tambah Tenant Baru</h3>
+  openDlg(`<h3>➕ Add New Tenant</h3>
 <div class="form-row">
-  <div class="fld full"><label>Nama Syarikat</label><input id="tName" placeholder="Nama syarikat"></div>
-  <div class="fld"><label>Industri</label><select id="tInd"><option>Healthcare</option><option>Pharmacy</option><option>Clinic</option><option>Lain-lain</option></select></div>
-  <div class="fld"><label>Plan</label><select id="tPlan"><option value="starter">Starter (RM99/bln)</option><option value="pro">Pro (RM299/bln)</option><option value="enterprise">Enterprise</option></select></div>
-  <div class="fld full"><label>Email Admin</label><input id="tEmail" placeholder="admin@syarikat.com" type="email"></div>
+  <div class="fld full"><label>Company Name</label><input id="tName" placeholder="Company name"></div>
+  <div class="fld"><label>Industry</label><select id="tInd"><option>Healthcare</option><option>Pharmacy</option><option>Clinic</option><option>Other</option></select></div>
+  <div class="fld"><label>Plan</label><select id="tPlan"><option value="starter">Starter (RM99/mo)</option><option value="pro">Pro (RM299/mo)</option><option value="enterprise">Enterprise</option></select></div>
+  <div class="fld full"><label>Admin Email</label><input id="tEmail" placeholder="admin@syarikat.com" type="email"></div>
 </div>
 <div class="dlg-footer">
-  <button class="btn btn-ghost" onclick="closeDlg()">Batal</button>
-  <button class="btn btn-primary" onclick="addTenant()">Tambah Tenant</button>
+  <button class="btn btn-ghost" onclick="closeDlg()">Cancel</button>
+  <button class="btn btn-primary" onclick="addTenant()">Add Tenant</button>
 </div>`);
 }
 
 function addTenant(){
   const n=document.getElementById('tName')?.value?.trim();
-  if(!n){toast('❌ Sila isi nama syarikat');return;}
+  if(!n){toast('❌ Please enter company name');return;}
   const t={id:'T00'+(SEED_TENANTS.length+1),name:n,plan:document.getElementById('tPlan').value,users:1,branches:1,mrr:{starter:99,pro:299,enterprise:1200}[document.getElementById('tPlan').value],status:'trial',joined:today(),industry:document.getElementById('tInd').value};
   SEED_TENANTS.push(t);
   closeDlg();
   navTo('sa-tenants');
-  toast('✓ Tenant '+n+' berjaya ditambah');
+  toast('✓ Tenant '+n+' added successfully');
 }
 
 function pageSaPlans(){
   const plans=[
-    {name:'Starter',price:99,color:'teal',tenants:SEED_TENANTS.filter(t=>t.plan==='starter').length,features:['1 cawangan','5 pengguna','100 produk','B2B asas','Laporan asas']},
-    {name:'Pro',price:299,color:'navy',tenants:SEED_TENANTS.filter(t=>t.plan==='pro').length,features:['10 cawangan','25 pengguna','Produk tanpa had','B2B + B2C','Supplier Portal','Analitik lanjutan']},
-    {name:'Enterprise',price:1200,color:'orange',tenants:SEED_TENANTS.filter(t=>t.plan==='enterprise').length,features:['Cawangan tanpa had','Pengguna tanpa had','White-label','API & Webhook','Dedicated support','SLA 99.9%']},
+    {name:'Starter',price:99,color:'teal',tenants:SEED_TENANTS.filter(t=>t.plan==='starter').length,features:['1 branch','5 users','100 products','Basic B2B','Basic reports']},
+    {name:'Pro',price:299,color:'navy',tenants:SEED_TENANTS.filter(t=>t.plan==='pro').length,features:['10 branches','25 users','Unlimited products','B2B + B2C','Supplier Portal','Advanced analytics']},
+    {name:'Enterprise',price:1200,color:'orange',tenants:SEED_TENANTS.filter(t=>t.plan==='enterprise').length,features:['Unlimited branches','Unlimited users','White-label','API & Webhook','Dedicated support','SLA 99.9%']},
   ];
-  return `<div class="page-head"><h2>💎 Subscription Plans</h2><p>Urus plan langganan platform</p></div>
+  return `<div class="page-head"><h2>💎 Subscription Plans</h2><p>Manage platform subscription plans</p></div>
 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
   ${plans.map(p=>`<div class="card">
-    <div class="card-h"><h3>${p.name}</h3><span class="badge badge-${p.plan||p.name.toLowerCase()}">${p.tenants} tenant</span></div>
+    <div class="card-h"><h3>${p.name}</h3><span class="badge badge-${p.plan||p.name.toLowerCase()}">${p.tenants} tenants</span></div>
     <div class="card-body">
-      <div class="kpi k${p.color[0]}" style="margin-bottom:16px"><div class="lbl">Harga Bulanan</div><div class="val">${fmtRM(p.price)}</div></div>
+      <div class="kpi k${p.color[0]}" style="margin-bottom:16px"><div class="lbl">Monthly Price</div><div class="val">${fmtRM(p.price)}</div></div>
       <ul style="list-style:none;display:flex;flex-direction:column;gap:8px">
         ${p.features.map(f=>`<li style="font-size:14px;display:flex;align-items:center;gap:8px"><span style="color:var(--green);font-weight:700">✓</span>${f}</li>`).join('')}
       </ul>
       <div style="margin-top:16px;display:flex;gap:8px">
         <button class="btn btn-ghost btn-sm" onclick="toast('Edit plan ${p.name}')">Edit</button>
-        <button class="btn btn-primary btn-sm" onclick="toast('MRR ${p.name}: ${fmtRM(p.price*p.tenants)}/bln')">Lihat MRR</button>
+        <button class="btn btn-primary btn-sm" onclick="toast('MRR ${p.name}: ${fmtRM(p.price*p.tenants)}/mo')">View MRR</button>
       </div>
     </div>
   </div>`).join('')}
@@ -1425,18 +1425,18 @@ function pageSaPlans(){
 }
 
 function pageSaAnalytics(){
-  const months=['Jan','Feb','Mar','Apr','Mei','Jun'];
+  const months=['Jan','Feb','Mar','Apr','May','Jun'];
   const mrr=[1200,1800,2400,3000,3600,3996];
   const maxMrr=Math.max(...mrr);
-  return `<div class="page-head"><h2>📊 Platform Analytics</h2><p>Metrik pertumbuhan platform OrcaHub</p></div>
+  return `<div class="page-head"><h2>📊 Platform Analytics</h2><p>OrcaHub platform growth metrics</p></div>
 <div class="kpis">
   <div class="kpi kn"><div class="lbl">ARR</div><div class="val">${fmtRM(3996*12)}</div><div class="sub trend-up">↑ 233% YoY</div></div>
-  <div class="kpi ko"><div class="lbl">Churn Rate</div><div class="val">1.2%</div><div class="sub trend-dn">↑ 0.2% vs bulan lepas</div></div>
-  <div class="kpi kg"><div class="lbl">NPS Score</div><div class="val">72</div><div class="sub trend-up">Sangat baik</div></div>
-  <div class="kpi kp"><div class="lbl">ARPU</div><div class="val">${fmtRM(3996/SEED_TENANTS.length)}</div><div class="sub">Purata setiap tenant</div></div>
+  <div class="kpi ko"><div class="lbl">Churn Rate</div><div class="val">1.2%</div><div class="sub trend-dn">↑ 0.2% vs last month</div></div>
+  <div class="kpi kg"><div class="lbl">NPS Score</div><div class="val">72</div><div class="sub trend-up">Excellent</div></div>
+  <div class="kpi kp"><div class="lbl">ARPU</div><div class="val">${fmtRM(3996/SEED_TENANTS.length)}</div><div class="sub">Average per tenant</div></div>
 </div>
 <div class="card">
-  <div class="card-h"><h3>📈 Pertumbuhan MRR (2026)</h3></div>
+  <div class="card-h"><h3>📈 MRR Growth (2026)</h3></div>
   <div class="card-body">
     <div style="display:flex;align-items:flex-end;gap:12px;height:160px;padding-top:10px">
       ${mrr.map((v,i)=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px">
@@ -1448,13 +1448,13 @@ function pageSaAnalytics(){
   </div>
 </div>
 <div class="card">
-  <div class="card-h"><h3>🌍 Pengagihan Industri</h3></div>
+  <div class="card-h"><h3>🌍 Industry Distribution</h3></div>
   <div class="card-body">
     <div class="bar-chart">
       ${[['Healthcare',3,6],['Pharmacy',1,6],['Clinic',2,6]].map(([l,v,m])=>`
       <div class="bar-row"><div class="bar-label">${l}</div>
       <div class="bar-track"><div class="bar-fill" style="width:${(v/m*100).toFixed(0)}%"></div></div>
-      <div class="bar-val">${v} tenant</div></div>`).join('')}
+      <div class="bar-val">${v} tenants</div></div>`).join('')}
     </div>
   </div>
 </div>`;
@@ -1468,40 +1468,40 @@ function pageHqDashboard(){
   const b2cRev=B2C_ORDERS.filter(o=>o.status==='done').reduce((s,o)=>s+orderTotal(o.items),0);
   const lowStock=PRODUCTS.filter(p=>p.stock<100).length;
   const criticalBatches=BATCHES.filter(b=>['expired','critical'].includes(expiryStatus(b.expiry))).length;
-  return `<div class="page-head"><h2>🏢 HQ Dashboard</h2><p>${SESSION.org} — Gambaran keseluruhan operasi</p></div>
+  return `<div class="page-head"><h2>🏢 HQ Dashboard</h2><p>${SESSION.org} — Operations overview</p></div>
 <div class="kpis">
-  <div class="kpi kn"><div class="lbl">Order B2B Baru</div><div class="val">${b2bNew}</div><div class="sub">Menunggu lulus</div></div>
-  <div class="kpi ko"><div class="lbl">Order B2C Baru</div><div class="val">${b2cNew}</div><div class="sub">Menunggu proses</div></div>
-  <div class="kpi kg"><div class="lbl">Hasil B2B</div><div class="val">${fmtRM(b2bRev)}</div><div class="sub">Order selesai</div></div>
-  <div class="kpi kp"><div class="lbl">Hasil B2C</div><div class="val">${fmtRM(b2cRev)}</div><div class="sub">Order selesai</div></div>
+  <div class="kpi kn"><div class="lbl">New B2B Orders</div><div class="val">${b2bNew}</div><div class="sub">Awaiting approval</div></div>
+  <div class="kpi ko"><div class="lbl">New B2C Orders</div><div class="val">${b2cNew}</div><div class="sub">Awaiting processing</div></div>
+  <div class="kpi kg"><div class="lbl">B2B Revenue</div><div class="val">${fmtRM(b2bRev)}</div><div class="sub">Completed orders</div></div>
+  <div class="kpi kp"><div class="lbl">B2C Revenue</div><div class="val">${fmtRM(b2cRev)}</div><div class="sub">Completed orders</div></div>
 </div>
 ${lowStock>0?`<div style="background:var(--orange-l);border:1px solid var(--orange);border-radius:var(--radius);padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:12px">
   <span style="font-size:20px">⚠️</span>
-  <div><strong>${lowStock} produk</strong> dengan stok rendah (< 100 unit). <a href="#" onclick="navTo('hq-catalog')">Semak katalog →</a></div>
+  <div><strong>${lowStock} products</strong> with low stock (< 100 units). <a href="#" onclick="navTo('hq-catalog')">Check catalog →</a></div>
 </div>`:''}
 ${criticalBatches>0?`<div style="background:var(--red-l);border:1px solid var(--red);border-radius:var(--radius);padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:12px">
   <span style="font-size:20px">🗓️</span>
-  <div><strong>${criticalBatches} batch</strong> kritikal atau luput tarikh. <a href="#" onclick="navTo('hq-batches')">Semak Batch & Expiry →</a></div>
+  <div><strong>${criticalBatches} batches</strong> critical or expired. <a href="#" onclick="navTo('hq-batches')">Check Batch & Expiry →</a></div>
 </div>`:''}
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
   <div class="card">
-    <div class="card-h"><h3>📋 Order B2B Terkini</h3><button class="btn btn-ghost btn-xs" onclick="navTo('hq-b2b-orders')">Lihat semua</button></div>
-    <div class="tbl-wrap"><table><thead><tr><th>No. Order</th><th>Branch</th><th>Status</th><th>Jumlah</th></tr></thead><tbody>
+    <div class="card-h"><h3>📋 Recent B2B Orders</h3><button class="btn btn-ghost btn-xs" onclick="navTo('hq-b2b-orders')">View all</button></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Order No.</th><th>Branch</th><th>Status</th><th>Total</th></tr></thead><tbody>
       ${B2B_ORDERS.slice(0,4).map(o=>`<tr>
         <td style="font-weight:700">${o.id}</td>
         <td>${o.branch}</td>
-        <td><span class="pill ${o.status==='new'?'p-new':o.status==='process'?'p-process':'p-done'}">${o.status==='new'?'Baru':o.status==='process'?'Proses':'Selesai'}</span></td>
+        <td><span class="pill ${o.status==='new'?'p-new':o.status==='process'?'p-process':'p-done'}">${o.status==='new'?'New':o.status==='process'?'Processing':'Completed'}</span></td>
         <td style="font-weight:600">${fmtRM(orderTotal(o.items))}</td>
       </tr>`).join('')}
     </tbody></table></div>
   </div>
   <div class="card">
-    <div class="card-h"><h3>🛒 Order B2C Terkini</h3><button class="btn btn-ghost btn-xs" onclick="navTo('hq-b2c-orders')">Lihat semua</button></div>
-    <div class="tbl-wrap"><table><thead><tr><th>No. Order</th><th>Pelanggan</th><th>Status</th><th>Jumlah</th></tr></thead><tbody>
+    <div class="card-h"><h3>🛒 Recent B2C Orders</h3><button class="btn btn-ghost btn-xs" onclick="navTo('hq-b2c-orders')">View all</button></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Order No.</th><th>Customer</th><th>Status</th><th>Total</th></tr></thead><tbody>
       ${B2C_ORDERS.slice(0,4).map(o=>`<tr>
         <td style="font-weight:700">${o.id}</td>
         <td>${o.customer}</td>
-        <td><span class="pill ${o.status==='new'?'p-new':o.status==='process'?'p-process':'p-done'}">${o.status==='new'?'Baru':o.status==='process'?'Proses':'Selesai'}</span></td>
+        <td><span class="pill ${o.status==='new'?'p-new':o.status==='process'?'p-process':'p-done'}">${o.status==='new'?'New':o.status==='process'?'Processing':'Completed'}</span></td>
         <td style="font-weight:600">${fmtRM(orderTotal(o.items))}</td>
       </tr>`).join('')}
     </tbody></table></div>
@@ -1555,7 +1555,7 @@ function pageHqScanLog(){
     </div>
   </div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Masa</th><th>Pengguna</th><th>Tindakan</th><th>Kod Discan</th><th>No. Batch</th><th>Keputusan</th><th>Rujukan</th></tr></thead>
+    <thead><tr><th>Masa</th><th>Pengguna</th><th>Action</th><th>Kod Discan</th><th>No. Batch</th><th>Keputusan</th><th>Rujukan</th></tr></thead>
     <tbody>
       ${rows.length?rows.map(s=>{
         const rowBg=['blocked','expired'].includes(s.result)?'background:var(--red-l)':s.result==='earlier'?'background:var(--orange-l)':s.result==='ok'?'background:var(--green-l)':'';
@@ -1663,7 +1663,7 @@ function pageStocktake(){
 <div class="card">
   <div class="card-h"><h3>Sejarah Stocktake</h3><span style="font-size:12px;color:var(--grey)">${STOCKTAKES.length} rekod</span></div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Tarikh</th><th>Bil Batch</th><th>Bil Selisih</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>Date</th><th>Bil Batch</th><th>Bil Selisih</th><th>Status</th><th></th></tr></thead>
     <tbody>
       ${list.length?list.map(st=>{
         const varc=st.lines.filter(l=>l.physQty!=null&&l.physQty!==l.sysQty).length;
@@ -1676,7 +1676,7 @@ function pageStocktake(){
           <td>${st.lines.length}</td>
           <td>${varc?`<span style="color:var(--orange);font-weight:700">${varc}</span>`:'0'}</td>
           <td><span class="pill ${sm[0]}">${sm[1]}</span></td>
-          <td><div style="display:flex;gap:6px"><button class="btn btn-ghost btn-xs" onclick="${act}">Lihat</button><button class="btn btn-ghost btn-xs" onclick="printStocktakeReport('${st.id}')">Print</button></div></td>
+          <td><div style="display:flex;gap:6px"><button class="btn btn-ghost btn-xs" onclick="${act}">View</button><button class="btn btn-ghost btn-xs" onclick="printStocktakeReport('${st.id}')">Print</button></div></td>
         </tr>`;
       }).join(''):`<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">📋</div><h4>Tiada stocktake</h4><p>Tekan "+ Stocktake Baru" untuk mula kiraan fizikal</p></div></td></tr>`}
     </tbody>
@@ -1884,7 +1884,7 @@ function pageHqB2bOrders(){
 </div>
 <div class="card">
   <div class="tbl-wrap"><table>
-    <thead><tr><th>No. Order</th><th>Branch</th><th>Tarikh</th><th>Item</th><th>Jumlah</th><th>Status</th><th>Tindakan</th></tr></thead>
+    <thead><tr><th>Order No.</th><th>Branch</th><th>Date</th><th>Item</th><th>Total</th><th>Status</th><th>Action</th></tr></thead>
     <tbody>
       ${shown.length?shown.map(o=>`<tr>
         <td style="font-weight:700">${o.id}<br>${o.note?`<span style="font-size:11px;color:var(--orange)">${o.note}</span>`:''}</td>
@@ -1895,7 +1895,7 @@ function pageHqB2bOrders(){
         <td>${statusPill(o.status)}</td>
         <td>
           <div style="display:flex;gap:6px">
-            <button class="btn btn-ghost btn-xs" onclick="viewB2bOrder('${o.id}')">Lihat</button>
+            <button class="btn btn-ghost btn-xs" onclick="viewB2bOrder('${o.id}')">View</button>
             ${o.status==='new'?`<button class="btn btn-primary btn-xs" onclick="updateB2bStatus('${o.id}','process')">Proses</button>`:''}
             ${o.status==='process'?`<button class="btn btn-green btn-xs" onclick="updateB2bStatus('${o.id}','done')">Selesai</button>`:''}
           </div>
@@ -2387,7 +2387,7 @@ function pageHqPO(){
   </div>
   <div class="tbl-wrap"><table>
     <thead><tr>
-      <th>No. PO</th><th>Pembekal</th><th>Tarikh</th><th>Item</th>
+      <th>No. PO</th><th>Pembekal</th><th>Date</th><th>Item</th>
       <th>Jumlah Bayaran</th>
       <th style="color:var(--green)">FOC</th>
       <th>Status</th><th></th>
@@ -2411,7 +2411,7 @@ function pageHqPO(){
             ${po.status==='partial'?`<div style="font-size:11px;color:var(--grey);margin-top:3px">${po.items.reduce((s,i)=>s+(i.qtyReceived||0),0)}/${po.items.reduce((s,i)=>s+i.qty,0)} unit diterima</div>`:''}
           </td>
           <td><div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn btn-ghost btn-xs" onclick="viewPO('${po.id}')">Lihat</button>
+            <button class="btn btn-ghost btn-xs" onclick="viewPO('${po.id}')">View</button>
             <button class="btn btn-ghost btn-xs" onclick="printPO('${po.id}')" title="Cetak PO">🖨️</button>
             ${po.status==='pending'?`<button class="btn btn-primary btn-xs" onclick="hqConfirmPO('${po.id}')">Hantar ke Pembekal</button>`:''}
             ${po.status==='confirmed'?(()=>{const d=GRNS.find(g=>g.poRef===po.id&&g.status==='draft');return d?`<button class="btn btn-green btn-xs" onclick="showGrnForm('${po.id}','${d.id}')">Edit Draf GRN</button>`:`<button class="btn btn-green btn-xs" onclick="showGrnForm('${po.id}',null)">Terima Barang / GRN</button>`;})():''}
@@ -2698,7 +2698,7 @@ function showGrnStep1(){
   }).join('');
   openDlg(`<h3>📋 Buat GRN Baru — Pilih PO</h3>
 <div class="tbl-wrap"><table>
-  <thead><tr><th>No. PO</th><th>Pembekal</th><th>Tarikh</th><th>Status</th><th>Item</th><th>Nilai</th><th></th></tr></thead>
+  <thead><tr><th>No. PO</th><th>Pembekal</th><th>Date</th><th>Status</th><th>Item</th><th>Nilai</th><th></th></tr></thead>
   <tbody>${rows}</tbody>
 </table></div>
 <div class="dlg-footer"><button class="btn btn-ghost" onclick="closeDlg()">Tutup</button></div>`,true);
@@ -2891,7 +2891,7 @@ function pageHqGRN(){
         <td style="font-weight:700;font-family:Sora">${fmtRM(g.total||0)}</td>
         <td>${statusPill(g.status||'posted')}</td>
         <td><div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-ghost btn-xs" onclick="viewGRN('${g.id}')">Lihat</button>
+          <button class="btn btn-ghost btn-xs" onclick="viewGRN('${g.id}')">View</button>
           ${g.status==='draft'?`<button class="btn btn-ghost btn-xs" onclick="editGRN('${g.id}')">Edit</button>`:''}
           <button class="btn btn-ghost btn-xs" onclick="printGRN('${g.id}')" title="Cetak">🖨️</button>
         </div></td>
@@ -3165,7 +3165,7 @@ function pageHqB2cOrders(){
 </div>
 <div class="card">
   <div class="tbl-wrap"><table>
-    <thead><tr><th>No. Order</th><th>Pelanggan</th><th>Alamat Hantar</th><th>Tarikh</th><th>Jumlah</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>Order No.</th><th>Customer</th><th>Alamat Hantar</th><th>Date</th><th>Total</th><th>Status</th><th></th></tr></thead>
     <tbody>
       ${shown.map(o=>`<tr>
         <td style="font-weight:700">${o.id}</td>
@@ -3175,7 +3175,7 @@ function pageHqB2cOrders(){
         <td style="font-weight:700;font-family:Sora">${fmtRM(orderTotal(o.items))}</td>
         <td>${statusPill(o.status)}</td>
         <td><div style="display:flex;gap:6px">
-          <button class="btn btn-ghost btn-xs" onclick="viewB2cOrder('${o.id}')">Lihat</button>
+          <button class="btn btn-ghost btn-xs" onclick="viewB2cOrder('${o.id}')">View</button>
           ${o.status==='new'?`<button class="btn btn-primary btn-xs" onclick="updateB2cStatus('${o.id}','process')">Proses</button>`:''}
           ${o.status==='process'?`<button class="btn btn-green btn-xs" onclick="updateB2cStatus('${o.id}','done')">Hantar</button>`:''}
         </div></td>
@@ -3349,9 +3349,9 @@ function pageB2bDashboard(){
   <div class="kpi kp"><div class="lbl">Troli B2B</div><div class="val">${cartCount}</div><div class="sub"><a href="#" onclick="navTo('b2b-order')">Checkout →</a></div></div>
 </div>
 <div class="card">
-  <div class="card-h"><h3>📋 Order Terkini</h3><button class="btn btn-ghost btn-xs" onclick="navTo('b2b-myorders')">Lihat semua</button></div>
+  <div class="card-h"><h3>📋 Order Terkini</h3><button class="btn btn-ghost btn-xs" onclick="navTo('b2b-myorders')">View all</button></div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>No. Order</th><th>Tarikh</th><th>Item</th><th>Jumlah</th><th>Status</th></tr></thead>
+    <thead><tr><th>Order No.</th><th>Date</th><th>Item</th><th>Total</th><th>Status</th></tr></thead>
     <tbody>
       ${myOrders.length?myOrders.slice(0,4).map(o=>`<tr>
         <td style="font-weight:700">${o.id}</td><td>${o.date}</td>
@@ -3453,14 +3453,14 @@ function pageB2bMyOrders(){
   return `<div class="page-head"><h2>📋 Order Saya</h2><p>Semak status order yang dihantar ke HQ</p></div>
 <div class="card">
   <div class="tbl-wrap"><table>
-    <thead><tr><th>No. Order</th><th>Tarikh</th><th>Item</th><th>Jumlah</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>Order No.</th><th>Date</th><th>Item</th><th>Total</th><th>Status</th><th></th></tr></thead>
     <tbody>
       ${myOrders.length?myOrders.map(o=>`<tr>
         <td style="font-weight:700">${o.id}</td><td>${o.date}</td>
         <td>${o.items.length} item</td>
         <td style="font-weight:600">${fmtRM(orderTotal(o.items))}</td>
         <td>${statusPill(o.status)}</td>
-        <td><button class="btn btn-ghost btn-xs" onclick="viewB2bOrder('${o.id}')">Lihat</button></td>
+        <td><button class="btn btn-ghost btn-xs" onclick="viewB2bOrder('${o.id}')">View</button></td>
       </tr>`).join(''):`<tr><td colspan="6"><div class="empty-state" style="padding:40px"><div class="empty-icon">📋</div><h4>Belum ada order</h4><p>Buat order pertama anda!</p></div></td></tr>`}
     </tbody>
   </table></div>
@@ -3662,31 +3662,31 @@ function pageSupDashboard(){
   const pending=myPos.filter(p=>p.status==='pending').length;
   const confirmed=myPos.filter(p=>p.status==='confirmed').length;
   const done=myPos.filter(p=>p.status==='delivered').length;
-  return `<div class="page-head"><h2>🚚 ${SESSION.org}</h2><p>Selamat datang, ${SESSION.name}. Urus PO dan penghantaran anda.</p></div>
+  return `<div class="page-head"><h2>🚚 ${SESSION.org}</h2><p>Welcome, ${SESSION.name}. Manage your POs and deliveries.</p></div>
 <div class="kpis">
-  <div class="kpi ko"><div class="lbl">PO Baharu</div><div class="val">${pending}</div><div class="sub">Perlu disahkan</div></div>
-  <div class="kpi kn"><div class="lbl">PO Disahkan</div><div class="val">${confirmed}</div><div class="sub">Perlu dihantar</div></div>
-  <div class="kpi kg"><div class="lbl">PO Selesai</div><div class="val">${done}</div></div>
-  <div class="kpi kp"><div class="lbl">Jumlah Produk</div><div class="val">${PRODUCTS.length}</div><div class="sub">Dalam sistem</div></div>
+  <div class="kpi ko"><div class="lbl">New POs</div><div class="val">${pending}</div><div class="sub">Need confirmation</div></div>
+  <div class="kpi kn"><div class="lbl">Confirmed POs</div><div class="val">${confirmed}</div><div class="sub">Ready to ship</div></div>
+  <div class="kpi kg"><div class="lbl">Completed POs</div><div class="val">${done}</div></div>
+  <div class="kpi kp"><div class="lbl">Total Products</div><div class="val">${PRODUCTS.length}</div><div class="sub">In system</div></div>
 </div>
 <div class="card">
-  <div class="card-h"><h3>📄 PO Terkini</h3><button class="btn btn-ghost btn-xs" onclick="navTo('sup-po')">Lihat semua</button></div>
+  <div class="card-h"><h3>📄 Recent POs</h3><button class="btn btn-ghost btn-xs" onclick="navTo('sup-po')">View all</button></div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>No. PO</th><th>Tarikh</th><th>Jumlah</th><th>Status</th></tr></thead>
+    <thead><tr><th>No. PO</th><th>Date</th><th>Total</th><th>Status</th></tr></thead>
     <tbody>
       ${myPos.length?myPos.slice(0,4).map(po=>`<tr>
         <td style="font-weight:700">${po.id}</td>
         <td>${po.date}</td>
         <td style="font-weight:600">${fmtRM(po.total)}</td>
         <td>${statusPill(po.status)}</td>
-      </tr>`).join(''):`<tr><td colspan="4"><div class="empty-state" style="padding:30px"><p>Belum ada PO</p></div></td></tr>`}
+      </tr>`).join(''):`<tr><td colspan="4"><div class="empty-state" style="padding:30px"><p>No POs yet</p></div></td></tr>`}
     </tbody>
   </table></div>
 </div>`;
 }
 
 function pageSupProducts(){
-  return `<div class="page-head"><h2>📦 Produk yang Dibekal</h2><p>Senarai produk yang anda bekalkan kepada pelanggan</p></div>
+  return `<div class="page-head"><h2>📦 Supplied Products</h2><p>List of products you supply to customers</p></div>
 <div class="card">
   <div class="card-h"><h3>Produk (${PRODUCTS.length})</h3></div>
   ${PRODUCTS.map(p=>`<div class="prod-row">
@@ -3697,7 +3697,7 @@ function pageSupProducts(){
     </div>
     <div style="text-align:right">
       <div class="prod-row-price">${fmtRM(p.supplierPrice)}</div>
-      <div style="font-size:11px;color:var(--grey)">Harga bekalan</div>
+      <div style="font-size:11px;color:var(--grey)">Supply price</div>
     </div>
   </div>`).join('')}
 </div>`;
@@ -3705,10 +3705,10 @@ function pageSupProducts(){
 
 function pageSupPO(){
   const myPos=POS.filter(p=>p.supplier===SESSION.org);
-  return `<div class="page-head"><h2>📄 Incoming Purchase Orders</h2><p>PO yang diterima dari pelanggan</p></div>
+  return `<div class="page-head"><h2>📄 Incoming Purchase Orders</h2><p>POs received from customers</p></div>
 <div class="card">
   <div class="tbl-wrap"><table>
-    <thead><tr><th>No. PO</th><th>Tarikh</th><th>Item</th><th>Jumlah</th><th>Status</th><th>Tindakan</th></tr></thead>
+    <thead><tr><th>No. PO</th><th>Date</th><th>Item</th><th>Total</th><th>Status</th><th>Action</th></tr></thead>
     <tbody>
       ${myPos.length?myPos.map(po=>`<tr>
         <td style="font-weight:700">${po.id}</td>
@@ -3717,11 +3717,11 @@ function pageSupPO(){
         <td style="font-weight:700;font-family:Sora">${fmtRM(po.total)}</td>
         <td>${statusPill(po.status)}</td>
         <td><div style="display:flex;gap:6px">
-          <button class="btn btn-ghost btn-xs" onclick="viewPO('${po.id}')">Lihat</button>
-          ${po.status==='pending'?`<button class="btn btn-primary btn-xs" onclick="supConfirmPO('${po.id}')">Sahkan</button>`:''}
-          ${po.status==='confirmed'?`<button class="btn btn-green btn-xs" onclick="supDeliverPO('${po.id}')">Hantar</button>`:''}
+          <button class="btn btn-ghost btn-xs" onclick="viewPO('${po.id}')">View</button>
+          ${po.status==='pending'?`<button class="btn btn-primary btn-xs" onclick="supConfirmPO('${po.id}')">Confirm</button>`:''}
+          ${po.status==='confirmed'?`<button class="btn btn-green btn-xs" onclick="supDeliverPO('${po.id}')">Ship</button>`:''}
         </div></td>
-      </tr>`).join(''):`<tr><td colspan="6"><div class="empty-state" style="padding:40px"><div class="empty-icon">📄</div><h4>Tiada PO diterima</h4></div></td></tr>`}
+      </tr>`).join(''):`<tr><td colspan="6"><div class="empty-state" style="padding:40px"><div class="empty-icon">📄</div><h4>No POs received</h4></div></td></tr>`}
     </tbody>
   </table></div>
 </div>`;
@@ -3729,21 +3729,21 @@ function pageSupPO(){
 
 async function supConfirmPO(id){
   const po=POS.find(x=>x.id===id);if(!po)return;
-  po.status='confirmed';await savePOs();navTo('sup-po');toast('✓ PO '+id+' disahkan. Sila proses penghantaran.');
+  po.status='confirmed';await savePOs();navTo('sup-po');toast('✓ PO '+id+' confirmed. Please process shipment.');
 }
 
 async function supDeliverPO(id){
   const po=POS.find(x=>x.id===id);if(!po)return;
   po.status='delivered';await savePOs();buildSidebar();navTo('sup-delivery');
-  toast('✓ PO '+id+' ditanda dihantar. HQ akan buat GRN.');
+  toast('✓ PO '+id+' marked shipped. HQ will create GRN.');
 }
 
 function pageSupDelivery(){
   const delivered=POS.filter(p=>p.supplier===SESSION.org&&p.status==='delivered');
-  return `<div class="page-head"><h2>🚚 Sejarah Penghantaran</h2><p>PO yang telah dihantar kepada pelanggan</p></div>
+  return `<div class="page-head"><h2>🚚 Delivery History</h2><p>POs shipped to customers</p></div>
 <div class="card">
   <div class="tbl-wrap"><table>
-    <thead><tr><th>No. PO</th><th>Tarikh PO</th><th>Item</th><th>Jumlah</th><th>Status</th></tr></thead>
+    <thead><tr><th>No. PO</th><th>PO Date</th><th>Item</th><th>Total</th><th>Status</th></tr></thead>
     <tbody>
       ${delivered.length?delivered.map(po=>`<tr>
         <td style="font-weight:700">${po.id}</td>
@@ -3751,53 +3751,53 @@ function pageSupDelivery(){
         <td>${po.items.length} item</td>
         <td style="font-weight:600">${fmtRM(po.total)}</td>
         <td>${statusPill(po.status)}</td>
-      </tr>`).join(''):`<tr><td colspan="5"><div class="empty-state" style="padding:40px"><div class="empty-icon">🚚</div><h4>Belum ada penghantaran</h4></div></td></tr>`}
+      </tr>`).join(''):`<tr><td colspan="5"><div class="empty-state" style="padding:40px"><div class="empty-icon">🚚</div><h4>No deliveries yet</h4></div></td></tr>`}
     </tbody>
   </table></div>
 </div>`;
 }
-function pageSettings(){return `<div class="page-head"><h2>⚙️ Tetapan</h2><p>Urus profil dan akaun anda</p></div>
-<div class="card"><div class="card-h"><h3>Profil Pengguna</h3></div><div class="card-body">
+function pageSettings(){return `<div class="page-head"><h2>⚙️ Settings</h2><p>Manage your profile and account</p></div>
+<div class="card"><div class="card-h"><h3>User Profile</h3></div><div class="card-body">
 <div class="form-row">
-<div class="fld"><label>Nama</label><input value="${SESSION?.name||''}" id="stName"></div>
-<div class="fld"><label>Peranan</label><input value="${SESSION?.role||''}" disabled></div>
-<div class="fld full"><label>Organisasi</label><input value="${SESSION?.org||''}" disabled></div>
+<div class="fld"><label>Name</label><input value="${SESSION?.name||''}" id="stName"></div>
+<div class="fld"><label>Role</label><input value="${SESSION?.role||''}" disabled></div>
+<div class="fld full"><label>Organization</label><input value="${SESSION?.org||''}" disabled></div>
 </div>
-<button class="btn btn-primary" onclick="toast('✓ Profil disimpan')">Simpan Perubahan</button>
+<button class="btn btn-primary" onclick="toast('✓ Profile saved')">Save Changes</button>
 </div></div>
-<div class="card"><div class="card-h"><h3>Langganan</h3></div><div class="card-body">
-<p style="margin-bottom:12px">Plan semasa: <span class="badge badge-${SESSION?.plan||'starter'}">${(SESSION?.plan||'starter').toUpperCase()}</span></p>
-<button class="btn btn-ghost" onclick="toast('Hubungi sales@orcahub.com untuk naik taraf')">Naik Taraf Plan</button>
+<div class="card"><div class="card-h"><h3>Subscription</h3></div><div class="card-body">
+<p style="margin-bottom:12px">Current plan: <span class="badge badge-${SESSION?.plan||'starter'}">${(SESSION?.plan||'starter').toUpperCase()}</span></p>
+<button class="btn btn-ghost" onclick="toast('Contact sales@orcahub.com to upgrade')">Upgrade Plan</button>
 </div></div>
-${SESSION?.role==='hq'?`<div class="card"><div class="card-h"><h3>📁 Kategori Produk</h3><span style="font-size:12px;color:var(--grey)">${CATEGORIES.length} kategori</span></div><div class="card-body">
+${SESSION?.role==='hq'?`<div class="card"><div class="card-h"><h3>📁 Product Categories</h3><span style="font-size:12px;color:var(--grey)">${CATEGORIES.length} categories</span></div><div class="card-body">
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
   ${CATEGORIES.map((c,i)=>`<div style="display:inline-flex;align-items:center;gap:4px;background:var(--navy-l);border-radius:20px;padding:5px 12px">
     <span style="font-size:13px;font-weight:600;color:var(--navy)">${c}</span>
-    <button onclick="delCategory(${i})" style="background:none;border:none;color:var(--grey);font-size:15px;cursor:pointer;padding:0 0 0 4px;line-height:1" title="Padam">×</button>
+    <button onclick="delCategory(${i})" style="background:none;border:none;color:var(--grey);font-size:15px;cursor:pointer;padding:0 0 0 4px;line-height:1" title="Delete">×</button>
   </div>`).join('')}
 </div>
 <div style="display:flex;gap:8px">
-  <input id="newCatInp" placeholder="Nama kategori baru..." style="flex:1;padding:10px 14px;border:1.5px solid var(--line);border-radius:var(--radius-sm);background:var(--paper);color:var(--ink)">
-  <button class="btn btn-primary btn-sm" onclick="addCategoryFromSettings()">+ Tambah</button>
+  <input id="newCatInp" placeholder="New category name..." style="flex:1;padding:10px 14px;border:1.5px solid var(--line);border-radius:var(--radius-sm);background:var(--paper);color:var(--ink)">
+  <button class="btn btn-primary btn-sm" onclick="addCategoryFromSettings()">+ Add</button>
 </div>
 </div></div>`:''}
-${(SESSION?.role==='superadmin'||SESSION?.role==='hq')?`<div class="card"><div class="card-h"><h3>🔄 Reset Data Demo</h3></div><div class="card-body">
-<p style="margin-bottom:16px;color:var(--grey);line-height:1.55">Semua data semasa (Produk, PO, GRN, Batch, Log Scan, Pembekal, Kategori, Order B2B/B2C, Troli) akan dipadam dan digantikan dengan data demo asal. Tindakan ini tidak boleh dibatalkan.</p>
-<button class="btn btn-primary" style="background:var(--red)" onclick="resetDemoData()">Reset ke Data Demo</button>
+${(SESSION?.role==='superadmin'||SESSION?.role==='hq')?`<div class="card"><div class="card-h"><h3>🔄 Reset Demo Data</h3></div><div class="card-body">
+<p style="margin-bottom:16px;color:var(--grey);line-height:1.55">All current data (Products, POs, GRNs, Batches, Scan Log, Suppliers, Categories, B2B/B2C Orders, Cart) will be deleted and replaced with the original demo data. This action cannot be undone.</p>
+<button class="btn btn-primary" style="background:var(--red)" onclick="resetDemoData()">Reset to Demo Data</button>
 </div></div>`:''}`;
 }
 
 async function delCategory(idx){
-  showConfirm('Padam Kategori','Padam kategori "'+CATEGORIES[idx]+'"?','Padam',async()=>{
-    CATEGORIES.splice(idx,1);await saveCategories();navTo('settings');toast('✓ Kategori dipadam');
+  showConfirm('Delete Category','Delete category "'+CATEGORIES[idx]+'"?','Delete',async()=>{
+    CATEGORIES.splice(idx,1);await saveCategories();navTo('settings');toast('✓ Category deleted');
   });
 }
 
 async function addCategoryFromSettings(){
   const v=document.getElementById('newCatInp')?.value?.trim();
-  if(!v){toast('❌ Sila isi nama kategori');return;}
-  if(CATEGORIES.includes(v)){toast('❌ Kategori sudah wujud');return;}
-  CATEGORIES.push(v);await saveCategories();navTo('settings');toast('✓ Kategori "'+v+'" ditambah');
+  if(!v){toast('❌ Please enter category name');return;}
+  if(CATEGORIES.includes(v)){toast('❌ Category already exists');return;}
+  CATEGORIES.push(v);await saveCategories();navTo('settings');toast('✓ Category "'+v+'" added');
 }
 
 </script>
