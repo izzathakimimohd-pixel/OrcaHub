@@ -677,6 +677,7 @@ let BATCHES=[];
 let SCANLOG=[];
 let SUPPLIERS=[];
 let CATEGORIES=[];
+let STOCKTAKES=[];
 
 // ===== LOAD / SEED DATA =====
 async function loadData(){
@@ -703,8 +704,12 @@ async function loadData(){
     SUPPLIERS=suppliers?JSON.parse(suppliers):seedSuppliers();
     const categories=await STORE.get('oh_categories');
     CATEGORIES=categories?JSON.parse(categories):seedCategories();
-  }catch(e){PRODUCTS=SEED_PRODUCTS.map(x=>({...x}));BATCHES=seedBatches();SCANLOG=[];SUPPLIERS=seedSuppliers();CATEGORIES=seedCategories();}
+    const st=await STORE.get('oh_stocktakes');
+    STOCKTAKES=st?JSON.parse(st):[];
+  }catch(e){PRODUCTS=SEED_PRODUCTS.map(x=>({...x}));BATCHES=seedBatches();SCANLOG=[];SUPPLIERS=seedSuppliers();CATEGORIES=seedCategories();STOCKTAKES=[];}
 }
+
+async function saveStocktakes(){await STORE.set('oh_stocktakes',JSON.stringify(STOCKTAKES));}
 
 async function resetDemoData(){
   showConfirm('Reset Data Demo',
@@ -712,7 +717,7 @@ async function resetDemoData(){
     'Ya, Reset',async()=>{
       const keys=['oh_products','oh_pos','oh_grns','oh_batches',
         'oh_scanlog','oh_suppliers','oh_categories',
-        'oh_b2b_orders','oh_b2c_orders'];
+        'oh_b2b_orders','oh_b2c_orders','oh_stocktakes'];
       // kumpul juga semua cart per-user
       try{
         for(let i=0;i<localStorage.length;i++){
@@ -1084,6 +1089,7 @@ const MENUS={
     {id:'hq-b2b-orders',ic:'📋',label:'Order B2B',badge:'b2b'},
     {id:'hq-catalog',   ic:'📦',label:'Katalog Produk'},
     {id:'hq-batches',   ic:'🗓️',label:'Batch & Expiry',badge:'expiry'},
+    {id:'hq-stocktake', ic:'📋',label:'Stocktake'},
     {id:'hq-scanlog',   ic:'📋',label:'Log Scan'},
     {id:'hq-suppliers', ic:'🚚',label:'Pembekal'},
     {id:'hq-po',        ic:'📄',label:'Purchase Orders',badge:'po'},
@@ -1149,7 +1155,7 @@ function navTo(page){
   buildSidebar();
   renderPage();
   const labels={'sa-dashboard':'Dashboard','sa-tenants':'Tenants','sa-plans':'Subscription Plans','sa-analytics':'Analytics',
-    'hq-dashboard':'Dashboard','hq-b2b-orders':'Order B2B','hq-catalog':'Katalog','hq-batches':'Batch & Expiry','hq-scanlog':'Log Scan','hq-suppliers':'Pembekal','hq-po':'Purchase Orders','hq-grn':'GRN','hq-grn-form':'Borang GRN','hq-b2c-orders':'Order B2C','hq-purchase-report':'Laporan Pembelian','hq-analytics':'Analitik',
+    'hq-dashboard':'Dashboard','hq-b2b-orders':'Order B2B','hq-catalog':'Katalog','hq-batches':'Batch & Expiry','hq-scanlog':'Log Scan','hq-suppliers':'Pembekal','hq-po':'Purchase Orders','hq-grn':'GRN','hq-grn-form':'Borang GRN','hq-stocktake':'Stocktake','hq-b2c-orders':'Order B2C','hq-purchase-report':'Laporan Pembelian','hq-analytics':'Analitik',
     'b2b-shop':'Dashboard','b2b-order':'Order Baru','b2b-myorders':'Order Saya',
     'b2c-store':'Kedai','b2c-cart':'Troli','b2c-orders':'Order Saya',
     'sup-dashboard':'Dashboard','sup-products':'Produk Saya','sup-po':'Incoming PO','sup-delivery':'Penghantaran',
@@ -1244,6 +1250,8 @@ function renderPage(){
   else if(pg==='hq-dashboard')c.innerHTML=pageHqDashboard();
   else if(pg==='hq-b2b-orders')c.innerHTML=pageHqB2bOrders();
   else if(pg==='hq-batches')  c.innerHTML=pageHqBatches();
+  else if(pg==='hq-stocktake') c.innerHTML=pageStocktake();
+  else if(pg==='hq-stocktake-count'){c.innerHTML=pageStocktakeCount();focusScan('stScan');}
   else if(pg==='hq-scanlog')  c.innerHTML=pageHqScanLog();
   else if(pg==='hq-catalog')  c.innerHTML=pageHqCatalog();
   else if(pg==='hq-suppliers')c.innerHTML=pageHqSuppliers();
@@ -1621,6 +1629,206 @@ function pageHqBatches(){
     </tbody>
   </table></div>
 </div>`;
+}
+
+// ============================================================
+// STOCKTAKE MODULE — kiraan stok fizikal by batch (HQ)
+// ============================================================
+function stVarCell(sys,phys){
+  if(phys==null) return '<span style="color:var(--grey)">—</span>';
+  const d=Number(phys)-Number(sys);
+  const col=d===0?'var(--green)':d<0?'var(--red)':'var(--orange)';
+  return `<span style="color:${col};font-weight:700">${d>0?'+'+d:d}</span>`;
+}
+const ST_STATUS={draft:['p-new','Draf'],pending_review:['p-process','Semakan'],applied:['p-done','Selesai']};
+
+function pageStocktake(){
+  const head=`<div class="page-head"><h2>📋 Stocktake</h2><p>Kiraan stok fizikal ikut batch</p></div>`;
+  if(window._stReview){
+    const st=STOCKTAKES.find(x=>x.id===window._stReview);
+    if(st) return head+renderStocktakeReview(st);
+  }
+  const list=[...STOCKTAKES].reverse();
+  return head+`
+<div style="margin-bottom:16px"><button class="btn btn-primary" onclick="startStocktake()">+ Stocktake Baru</button></div>
+<div class="card">
+  <div class="card-h"><h3>Sejarah Stocktake</h3><span style="font-size:12px;color:var(--grey)">${STOCKTAKES.length} rekod</span></div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Tarikh</th><th>Bil Batch</th><th>Bil Selisih</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      ${list.length?list.map(st=>{
+        const varc=st.lines.filter(l=>l.physQty!=null&&l.physQty!==l.sysQty).length;
+        const sm=ST_STATUS[st.status]||['p-new',st.status];
+        const act=st.status==='draft'
+          ?`window._stReview=null;window._stId='${st.id}';navTo('hq-stocktake-count')`
+          :`window._stReview='${st.id}';navTo('hq-stocktake')`;
+        return `<tr>
+          <td style="font-weight:600">${st.date}</td>
+          <td>${st.lines.length}</td>
+          <td>${varc?`<span style="color:var(--orange);font-weight:700">${varc}</span>`:'0'}</td>
+          <td><span class="pill ${sm[0]}">${sm[1]}</span></td>
+          <td><button class="btn btn-ghost btn-xs" onclick="${act}">Lihat</button></td>
+        </tr>`;
+      }).join(''):`<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">📋</div><h4>Tiada stocktake</h4><p>Tekan "+ Stocktake Baru" untuk mula kiraan fizikal</p></div></td></tr>`}
+    </tbody>
+  </table></div>
+</div>`;
+}
+
+function renderStocktakeReview(st){
+  const counted=st.lines.filter(l=>l.physQty!=null).length;
+  const varLines=st.lines.filter(l=>l.physQty!=null&&l.physQty!==l.sysQty);
+  return `
+<div style="margin-bottom:14px"><button class="btn btn-ghost btn-sm" onclick="window._stReview=null;navTo('hq-stocktake')">← Kembali ke Senarai</button></div>
+<div class="kpis">
+  <div class="kpi kn"><div class="lbl">Tarikh</div><div class="val" style="font-size:20px">${st.date}</div><div class="sub">Oleh ${st.by||'—'}</div></div>
+  <div class="kpi ko"><div class="lbl">Bil Batch Dikira</div><div class="val">${counted}/${st.lines.length}</div></div>
+  <div class="kpi kr"><div class="lbl">Bil Selisih</div><div class="val">${varLines.length}</div></div>
+  <div class="kpi kp"><div class="lbl">Status</div><div class="val" style="font-size:18px">${(ST_STATUS[st.status]||['',st.status])[1]}</div>${st.appliedAt?`<div class="sub">${new Date(st.appliedAt).toLocaleString('ms-MY')}</div>`:''}</div>
+</div>
+<div class="card">
+  <div class="card-h"><h3>Semakan Selisih</h3>
+    ${st.status==='pending_review'&&varLines.length?`<button class="btn btn-primary btn-sm" onclick="applyStocktake('${st.id}')">Apply Semua Adjustment</button>`:''}
+    ${st.status==='applied'?`<span class="pill p-done">Telah Diterapkan oleh ${st.appliedBy||'—'}</span>`:''}
+  </div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Produk</th><th>Batch</th><th>Expiry</th><th>Qty Sistem</th><th>Qty Fizikal</th><th>Selisih</th></tr></thead>
+    <tbody>
+      ${st.lines.map(l=>{
+        const pr=PRODUCTS.find(p=>p.id===l.pid);const nm=pr?(pr.name||pr.desc||l.pid):l.pid;
+        const exCol={expired:'var(--red)',critical:'var(--orange)',warning:'#92400e',ok:'var(--green)'}[expiryStatus(l.expiry)];
+        const rowBg=(l.physQty!=null&&l.physQty!==l.sysQty)?'background:var(--orange-l)':'';
+        return `<tr style="${rowBg}">
+          <td style="font-weight:600">${nm}</td>
+          <td style="font-family:monospace">${l.batchNo}</td>
+          <td style="color:${exCol}">${l.expiry}</td>
+          <td>${l.sysQty}</td>
+          <td>${l.physQty==null?'<span style="color:var(--grey)">—</span>':l.physQty}</td>
+          <td>${stVarCell(l.sysQty,l.physQty)}</td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table></div>
+</div>`;
+}
+
+async function startStocktake(){
+  const st={id:uid('ST'),date:new Date().toISOString().slice(0,10),
+    status:'draft',by:SESSION?.name||'',
+    lines:BATCHES.map(b=>({batchId:b.id,pid:b.pid,batchNo:b.batchNo,
+      sysQty:b.qty,physQty:null,expiry:b.expiry}))};
+  STOCKTAKES.push(st);
+  await saveStocktakes();
+  window._stId=st.id;
+  window._stReview=null;
+  navTo('hq-stocktake-count');
+}
+
+function pageStocktakeCount(){
+  const st=STOCKTAKES.find(x=>x.id===window._stId);
+  const head=`<div class="page-head"><h2>📋 Kiraan Stocktake</h2><p>Scan batch dan masukkan kuantiti fizikal</p></div>`;
+  if(!st) return head+`<div class="card"><div class="card-body"><div class="empty-state"><div class="empty-icon">📋</div><h4>Stocktake tidak dijumpai</h4><p><a href="#" onclick="navTo('hq-stocktake')">← Kembali ke Senarai</a></p></div></div></div>`;
+  const counted=st.lines.filter(l=>l.physQty!=null).length;
+  const varc=st.lines.filter(l=>l.physQty!=null&&l.physQty!==l.sysQty).length;
+  return head+`
+<div style="margin-bottom:14px"><button class="btn btn-ghost btn-sm" onclick="navTo('hq-stocktake')">← Kembali ke Senarai</button></div>
+<div class="card">
+  <div class="card-h"><h3>Scan Batch</h3><span style="font-size:12px;color:var(--grey)">Tarikh: ${st.date}</span></div>
+  <div class="card-body">
+    ${scanInput('stScan','Scan/taip kod batch...','stScanBatch(scanVal)')}
+  </div>
+</div>
+<div class="card">
+  <div class="card-h"><h3>Kiraan Batch (${st.lines.length})</h3>
+    <div style="font-size:12px;color:var(--grey)">Dikira: <b id="stSumCounted">${counted}</b>/${st.lines.length} · Selisih: <b id="stSumVariance" style="color:var(--orange)">${varc}</b></div>
+  </div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Produk</th><th>Batch</th><th>Expiry</th><th>Qty Sistem</th><th>Qty Fizikal</th><th>Selisih</th></tr></thead>
+    <tbody>
+      ${st.lines.map(l=>{
+        const pr=PRODUCTS.find(p=>p.id===l.pid);const nm=pr?(pr.name||pr.desc||l.pid):l.pid;
+        const exCol={expired:'var(--red)',critical:'var(--orange)',warning:'#92400e',ok:'var(--green)'}[expiryStatus(l.expiry)];
+        return `<tr id="strow_${l.batchId}">
+          <td style="font-weight:600">${nm}</td>
+          <td style="font-family:monospace">${l.batchNo}</td>
+          <td style="color:${exCol}">${l.expiry}</td>
+          <td>${l.sysQty}</td>
+          <td><input type="number" min="0" id="phys_${l.batchId}" value="${l.physQty==null?'':l.physQty}" onchange="stSetPhys('${l.batchId}',this.value)" style="width:90px;padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink)"></td>
+          <td id="var_${l.batchId}">${stVarCell(l.sysQty,l.physQty)}</td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table></div>
+  <div class="card-body" style="display:flex;gap:10px;border-top:1px solid var(--line)">
+    <button class="btn btn-ghost" onclick="stSaveDraft()">Simpan Draf</button>
+    <button class="btn btn-primary" onclick="finishStocktake()">Selesai & Semak</button>
+  </div>
+</div>`;
+}
+
+function stScanBatch(code){
+  const st=STOCKTAKES.find(x=>x.id===window._stId);
+  if(!st)return;
+  const ln=st.lines.find(l=>(l.batchNo||'').toLowerCase()===String(code).toLowerCase());
+  logScan('stocktake',code,ln?ln.pid:'',ln?ln.batchNo:code,ln?'ok':'blocked',st.id);
+  if(ln){
+    const el=document.getElementById('phys_'+ln.batchId);
+    if(el){el.focus();if(el.select)el.select();}
+    const row=document.getElementById('strow_'+ln.batchId);
+    if(row)row.scrollIntoView({block:'center',behavior:'smooth'});
+    toast('✓ Batch '+ln.batchNo+' — masukkan qty fizikal');
+  }else{
+    toast('❌ Batch "'+code+'" tidak dijumpai');
+  }
+}
+
+function stSetPhys(batchId,val){
+  const st=STOCKTAKES.find(x=>x.id===window._stId);
+  if(!st)return;
+  const ln=st.lines.find(l=>l.batchId===batchId);
+  if(!ln)return;
+  ln.physQty = val==='' ? null : Number(val);
+  saveStocktakes();
+  const cell=document.getElementById('var_'+batchId);
+  if(cell)cell.innerHTML=stVarCell(ln.sysQty,ln.physQty);
+  const cEl=document.getElementById('stSumCounted');
+  const vEl=document.getElementById('stSumVariance');
+  if(cEl)cEl.textContent=st.lines.filter(l=>l.physQty!=null).length;
+  if(vEl)vEl.textContent=st.lines.filter(l=>l.physQty!=null&&l.physQty!==l.sysQty).length;
+}
+
+async function stSaveDraft(){await saveStocktakes();toast('✓ Draf disimpan');}
+
+async function finishStocktake(){
+  const st=STOCKTAKES.find(x=>x.id===window._stId);
+  if(!st)return;
+  st.status='pending_review';
+  await saveStocktakes();
+  window._stReview=st.id;
+  navTo('hq-stocktake');
+}
+
+async function applyStocktake(stId){
+  const st=STOCKTAKES.find(x=>x.id===stId);
+  if(!st||st.status==='applied')return;
+  showConfirm('Apply Adjustment','Kemas kini qty batch ikut kiraan fizikal? Tindakan direkod.','Ya, Apply',async()=>{
+    for(const ln of st.lines){
+      if(ln.physQty!=null && ln.physQty!==ln.sysQty){
+        const b=BATCHES.find(x=>x.id===ln.batchId);
+        if(b){ b.qty=ln.physQty; }
+        await logScan('adjustment',ln.batchNo,ln.pid,ln.batchNo,'ok',st.id);
+      }
+    }
+    // selaraskan p.stock = jumlah qty semua batch produk itu
+    PRODUCTS.forEach(p=>{
+      const sum=BATCHES.filter(b=>b.pid===p.id).reduce((s,b)=>s+b.qty,0);
+      if(BATCHES.some(b=>b.pid===p.id)) p.stock=sum;
+    });
+    st.status='applied'; st.appliedBy=SESSION?.name||'';
+    st.appliedAt=new Date().toISOString();
+    await saveBatches(); await saveProducts(); await saveStocktakes();
+    navTo('hq-stocktake'); toast('✓ Adjustment diterapkan');
+  });
 }
 
 // ============================================================
