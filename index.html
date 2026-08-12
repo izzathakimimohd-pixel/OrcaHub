@@ -1091,6 +1091,7 @@ const MENUS={
     {sect:'B2C Commerce'},
     {id:'hq-b2c-orders',ic:'🛒',label:'Order B2C',badge:'b2c'},
     {sect:'Laporan'},
+    {id:'hq-purchase-report',ic:'🧾',label:'Laporan Pembelian'},
     {id:'hq-analytics', ic:'📊',label:'Analitik'},
     {id:'settings',     ic:'⚙️',label:'Tetapan'},
   ],
@@ -1148,7 +1149,7 @@ function navTo(page){
   buildSidebar();
   renderPage();
   const labels={'sa-dashboard':'Dashboard','sa-tenants':'Tenants','sa-plans':'Subscription Plans','sa-analytics':'Analytics',
-    'hq-dashboard':'Dashboard','hq-b2b-orders':'Order B2B','hq-catalog':'Katalog','hq-batches':'Batch & Expiry','hq-scanlog':'Log Scan','hq-suppliers':'Pembekal','hq-po':'Purchase Orders','hq-grn':'GRN','hq-grn-form':'Borang GRN','hq-b2c-orders':'Order B2C','hq-analytics':'Analitik',
+    'hq-dashboard':'Dashboard','hq-b2b-orders':'Order B2B','hq-catalog':'Katalog','hq-batches':'Batch & Expiry','hq-scanlog':'Log Scan','hq-suppliers':'Pembekal','hq-po':'Purchase Orders','hq-grn':'GRN','hq-grn-form':'Borang GRN','hq-b2c-orders':'Order B2C','hq-purchase-report':'Laporan Pembelian','hq-analytics':'Analitik',
     'b2b-shop':'Dashboard','b2b-order':'Order Baru','b2b-myorders':'Order Saya',
     'b2c-store':'Kedai','b2c-cart':'Troli','b2c-orders':'Order Saya',
     'sup-dashboard':'Dashboard','sup-products':'Produk Saya','sup-po':'Incoming PO','sup-delivery':'Penghantaran',
@@ -1251,6 +1252,7 @@ function renderPage(){
   else if(pg==='hq-grn-form'){c.innerHTML=pageHqGrnForm();updateGrnTotals();}
   else if(pg==='hq-b2c-orders')c.innerHTML=pageHqB2cOrders();
   else if(pg==='hq-analytics')c.innerHTML=pageHqAnalytics();
+  else if(pg==='hq-purchase-report')c.innerHTML=pagePurchaseReport();
   else if(pg==='b2b-shop')    c.innerHTML=pageB2bDashboard();
   else if(pg==='b2b-order'){  c.innerHTML=pageB2bOrder();bindB2bOrder();}
   else if(pg==='b2b-myorders')c.innerHTML=pageB2bMyOrders();
@@ -2891,6 +2893,82 @@ function pageHqAnalytics(){
       <div class="bar-val">${fmtRM(x.rev)}</div>
     </div>`).join('')}</div>
   </div></div>
+</div>`;
+}
+
+function pagePurchaseReport(){
+  const posted=GRNS.filter(g=>g.status==='posted');
+  const head=`<div class="page-head"><h2>🧾 Laporan Pembelian</h2><p>Analisis kos belian dari GRN yang telah diterima</p></div>`;
+  if(!posted.length){
+    return head+`<div class="card"><div class="card-body"><div class="empty-state"><div class="empty-icon">🧾</div><h4>Tiada Laporan</h4><p>Belum ada GRN diterima untuk dijana laporan.</p></div></div></div>`;
+  }
+  const BULAN=['Januari','Februari','Mac','April','Mei','Jun','Julai','Ogos','September','Oktober','November','Disember'];
+  const bars=['navy','orange','green','purple','teal'];
+  const totalPurchase=posted.reduce((s,g)=>s+(parseFloat(g.total)||0),0);
+  const grnCount=posted.length;
+  const poCount=POS.length;
+  const avgGrn=totalPurchase/grnCount;
+
+  // (c) ikut bulan (YYYY-MM)
+  const byMonth={};
+  posted.forEach(g=>{const m=(g.grnDate||'').slice(0,7);if(!m)return;byMonth[m]=(byMonth[m]||0)+(parseFloat(g.total)||0);});
+  const months=Object.entries(byMonth).sort((a,b)=>a[0]<b[0]?-1:1);
+  const maxMonth=Math.max(...months.map(x=>x[1]),0);
+  const monthLabel=m=>{const[y,mm]=m.split('-');return`${BULAN[parseInt(mm,10)-1]||mm} ${y}`;};
+
+  // (d) ikut pembekal
+  const bySupplier={};
+  posted.forEach(g=>{const s=g.supplierName||'Tidak diketahui';bySupplier[s]=(bySupplier[s]||0)+(parseFloat(g.total)||0);});
+  const suppliers=Object.entries(bySupplier).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const maxSupplier=Math.max(...suppliers.map(x=>x[1]),0);
+
+  // (e) produk paling banyak dibeli
+  const byProduct={};
+  posted.forEach(g=>(g.items||[]).forEach(i=>{
+    const pid=i.pid;if(!pid)return;
+    if(!byProduct[pid])byProduct[pid]={qty:0,subtotal:0};
+    byProduct[pid].qty+=(parseFloat(i.qty)||0)+(parseFloat(i.foc)||0);
+    byProduct[pid].subtotal+=(parseFloat(i.subtotal)||0);
+  }));
+  const products=Object.entries(byProduct).sort((a,b)=>b[1].subtotal-a[1].subtotal).slice(0,10);
+
+  return head+`
+<div class="kpis">
+  <div class="kpi kn"><div class="lbl">Jumlah Pembelian</div><div class="val">${fmtRM(totalPurchase)}</div></div>
+  <div class="kpi ko"><div class="lbl">Bilangan GRN</div><div class="val">${grnCount}</div><div class="sub">GRN diterima</div></div>
+  <div class="kpi kg"><div class="lbl">Bilangan PO</div><div class="val">${poCount}</div><div class="sub">Purchase Order</div></div>
+  <div class="kpi kp"><div class="lbl">Purata Nilai GRN</div><div class="val">${fmtRM(avgGrn)}</div></div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+  <div class="card"><div class="card-h"><h3>📅 Pembelian Ikut Bulan</h3></div><div class="card-body">
+    <div class="bar-chart">${months.map(([m,v],i)=>`<div class="bar-row">
+      <div class="bar-label" style="width:110px">${monthLabel(m)}</div>
+      <div class="bar-track"><div class="bar-fill ${bars[i%bars.length]}" style="width:${maxMonth?(v/maxMonth*100).toFixed(0):0}%"></div></div>
+      <div class="bar-val">${fmtRM(v)}</div>
+    </div>`).join('')}</div>
+  </div></div>
+  <div class="card"><div class="card-h"><h3>🚚 Pembelian Ikut Pembekal</h3></div><div class="card-body">
+    <div class="bar-chart">${suppliers.map(([s,v],i)=>`<div class="bar-row">
+      <div class="bar-label" style="width:110px">${s}</div>
+      <div class="bar-track"><div class="bar-fill ${bars[i%bars.length]}" style="width:${maxSupplier?(v/maxSupplier*100).toFixed(0):0}%"></div></div>
+      <div class="bar-val">${fmtRM(v)}</div>
+    </div>`).join('')}</div>
+  </div></div>
+</div>
+<div class="card" style="margin-top:16px"><div class="card-h"><h3>📦 Produk Paling Banyak Dibeli</h3></div>
+  <div class="tbl-wrap">
+    <table><thead><tr><th>Produk</th><th>Qty Diterima</th><th>Jumlah Kos (RM)</th></tr></thead><tbody>
+      ${products.map(([pid,d])=>{
+        const pr=PRODUCTS.find(p=>p.id===pid);
+        const nm=pr?(pr.name||pr.desc||pid):pid;
+        return`<tr>
+          <td style="font-weight:600">${nm}</td>
+          <td>${d.qty}</td>
+          <td style="font-weight:700;font-family:'Sora';color:var(--navy)">${fmtRM(d.subtotal)}</td>
+        </tr>`;
+      }).join('')}
+    </tbody></table>
+  </div>
 </div>`;
 }
 
