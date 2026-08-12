@@ -2317,19 +2317,19 @@ function delSupplier(id){
 
 function showCreatePO(supplier=''){
   const supField=supplier
-    ?`<div class="fld"><label>Pembekal</label><select id="po_supplier" disabled><option value="${supplier}" selected>${supplier}</option></select></div>`
-    :`<div class="fld"><label>Pembekal</label><select id="po_supplier">
-        <option value="">-- Pilih Pembekal --</option>
+    ?`<div class="fld"><label>Supplier</label><select id="po_supplier" disabled><option value="${supplier}" selected>${supplier}</option></select></div>`
+    :`<div class="fld"><label>Supplier</label><select id="po_supplier">
+        <option value="">-- Select Supplier --</option>
         ${SUPPLIERS.filter(s=>s.status==='active').map(s=>`<option value="${s.name}">${s.name}</option>`).join('')}
       </select></div>`;
-  openDlg(`<h3>📄 Buat Purchase Order</h3>
+  openDlg(`<h3>📄 Create Purchase Order</h3>
 ${supField}
-<p style="font-size:12px;font-weight:700;font-family:Sora;margin-bottom:10px;color:var(--grey)">PILIH PRODUK</p>
+<p style="font-size:12px;font-weight:700;font-family:Sora;margin-bottom:10px;color:var(--grey)">SELECT PRODUCTS</p>
 <div style="max-height:320px;overflow-y:auto;border:1px solid var(--line);border-radius:var(--radius-sm)">
   <table style="width:100%;border-collapse:collapse">
     <thead><tr>
-      <th style="padding:8px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--grey);font-family:Sora;background:var(--sand);border-bottom:1px solid var(--line);text-align:left">Produk</th>
-      <th style="padding:8px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--grey);font-family:Sora;background:var(--sand);border-bottom:1px solid var(--line);text-align:center;width:80px">Harga</th>
+      <th style="padding:8px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--grey);font-family:Sora;background:var(--sand);border-bottom:1px solid var(--line);text-align:left">Product</th>
+      <th style="padding:8px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--grey);font-family:Sora;background:var(--sand);border-bottom:1px solid var(--line);text-align:center;width:80px">Price</th>
       <th style="padding:8px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--grey);font-family:Sora;background:var(--sand);border-bottom:1px solid var(--line);text-align:center;width:75px">Qty</th>
       <th style="padding:8px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--green);font-family:Sora;background:var(--sand);border-bottom:1px solid var(--line);text-align:center;width:75px">FOC</th>
     </tr></thead>
@@ -2340,7 +2340,7 @@ ${supField}
             
             <div>
               <div style="font-weight:600;font-size:13px">${p.name}</div>
-              <div style="font-size:11px;color:var(--grey)">${p.cat} · Stok: ${p.stock}</div>
+              <div style="font-size:11px;color:var(--grey)">${p.cat} · Stock: ${p.stock}</div>
             </div>
           </div>
         </td>
@@ -2357,37 +2357,37 @@ ${supField}
     </tbody>
   </table>
 </div>
-<div style="font-size:12px;color:var(--grey);margin-top:8px">💡 <b>FOC</b> = Free of Charge — kuantiti percuma dari pembekal (tidak dikenakan bayaran)</div>
+<div style="font-size:12px;color:var(--grey);margin-top:8px">💡 <b>FOC</b> = Free of Charge — free quantity from supplier (not charged)</div>
 <div class="dlg-footer">
-  <button class="btn btn-ghost" onclick="closeDlg()">Batal</button>
-  <button class="btn btn-primary" onclick="createPO()">Hantar PO</button>
+  <button class="btn btn-ghost" onclick="closeDlg()">Cancel</button>
+  <button class="btn btn-primary" onclick="createPO()">Send PO</button>
 </div>`,true);
 }
 
 async function createPO(){
   const supplier=document.getElementById('po_supplier')?.value||'';
-  if(!supplier){toast('❌ Sila pilih pembekal');return;}
+  if(!supplier){toast('❌ Please select supplier');return;}
   const items=PRODUCTS.map(p=>{
     const qty=parseInt(document.getElementById('po_qty_'+p.id)?.value)||0;
     const foc=parseInt(document.getElementById('po_foc_'+p.id)?.value)||0;
     return {pid:p.id,qty,foc,price:p.supplierPrice};
   }).filter(i=>i.qty>0||i.foc>0);
-  if(!items.length){toast('❌ Sila masukkan sekurang-kurang 1 produk');return;}
-  const total=items.reduce((s,i)=>s+i.qty*i.price,0); // FOC tidak dikira dalam total bayaran
+  if(!items.length){toast('❌ Please enter at least 1 product');return;}
+  const total=items.reduce((s,i)=>s+i.qty*i.price,0); // FOC not counted in total payment
   const po={id:uid('PO'),supplier,date:today(),status:'pending',items,total};
-  POS.push(po);await savePOs();closeDlg();navTo('hq-po');toast('✓ PO '+po.id+' dihantar ke '+supplier);
+  POS.push(po);await savePOs();closeDlg();navTo('hq-po');toast('✓ PO '+po.id+' sent to '+supplier);
 }
 
 function pageHqPO(){
-  return `<div class="page-head"><h2>📄 Purchase Orders</h2><p>PO yang dihantar ke pembekal</p></div>
+  return `<div class="page-head"><h2>📄 Purchase Orders</h2><p>POs sent to suppliers</p></div>
 <div class="card">
-  <div class="card-h"><h3>Senarai PO (${POS.length})</h3>
-    <button class="btn btn-primary btn-sm" onclick="showCreatePO()">+ Buat PO Baru</button>
+  <div class="card-h"><h3>PO List (${POS.length})</h3>
+    <button class="btn btn-primary btn-sm" onclick="showCreatePO()">+ Create New PO</button>
   </div>
   <div class="tbl-wrap"><table>
     <thead><tr>
-      <th>No. PO</th><th>Pembekal</th><th>Date</th><th>Item</th>
-      <th>Jumlah Bayaran</th>
+      <th>PO No.</th><th>Supplier</th><th>Date</th><th>Items</th>
+      <th>Total Payment</th>
       <th style="color:var(--green)">FOC</th>
       <th>Status</th><th></th>
     </tr></thead>
@@ -2398,7 +2398,7 @@ function pageHqPO(){
           <td style="font-weight:700">${po.id}</td>
           <td style="font-size:13px">${po.supplier}</td>
           <td>${po.date}</td>
-          <td>${po.items.length} item</td>
+          <td>${po.items.length} items</td>
           <td style="font-weight:700;font-family:Sora">${fmtRM(po.total)}</td>
           <td>
             ${totalFoc>0
@@ -2407,15 +2407,15 @@ function pageHqPO(){
           </td>
           <td>
             ${statusPill(po.status)}
-            ${po.status==='partial'?`<div style="font-size:11px;color:var(--grey);margin-top:3px">${po.items.reduce((s,i)=>s+(i.qtyReceived||0),0)}/${po.items.reduce((s,i)=>s+i.qty,0)} unit diterima</div>`:''}
+            ${po.status==='partial'?`<div style="font-size:11px;color:var(--grey);margin-top:3px">${po.items.reduce((s,i)=>s+(i.qtyReceived||0),0)}/${po.items.reduce((s,i)=>s+i.qty,0)} units received</div>`:''}
           </td>
           <td><div style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn btn-ghost btn-xs" onclick="viewPO('${po.id}')">View</button>
-            <button class="btn btn-ghost btn-xs" onclick="printPO('${po.id}')" title="Cetak PO">🖨️</button>
-            ${po.status==='pending'?`<button class="btn btn-primary btn-xs" onclick="hqConfirmPO('${po.id}')">Hantar ke Pembekal</button>`:''}
-            ${po.status==='confirmed'?(()=>{const d=GRNS.find(g=>g.poRef===po.id&&g.status==='draft');return d?`<button class="btn btn-green btn-xs" onclick="showGrnForm('${po.id}','${d.id}')">Edit Draf GRN</button>`:`<button class="btn btn-green btn-xs" onclick="showGrnForm('${po.id}',null)">Terima Barang / GRN</button>`;})():''}
-            ${po.status==='partial'?(()=>{const d=GRNS.find(g=>g.poRef===po.id&&g.status==='draft');return d?`<button class="btn btn-green btn-xs" onclick="showGrnForm('${po.id}','${d.id}')">Edit Draf GRN</button>`:`<button class="btn btn-green btn-xs" onclick="showGrnForm('${po.id}',null)">Terima Baki / GRN</button>`;})():''}
-            ${po.status==='delivered'?`<span style="font-size:11px;color:var(--green);font-weight:600">✓ Selesai</span>`:''}
+            <button class="btn btn-ghost btn-xs" onclick="printPO('${po.id}')" title="Print PO">🖨️</button>
+            ${po.status==='pending'?`<button class="btn btn-primary btn-xs" onclick="hqConfirmPO('${po.id}')">Send to Supplier</button>`:''}
+            ${po.status==='confirmed'?(()=>{const d=GRNS.find(g=>g.poRef===po.id&&g.status==='draft');return d?`<button class="btn btn-green btn-xs" onclick="showGrnForm('${po.id}','${d.id}')">Edit Draft GRN</button>`:`<button class="btn btn-green btn-xs" onclick="showGrnForm('${po.id}',null)">Receive Goods / GRN</button>`;})():''}
+            ${po.status==='partial'?(()=>{const d=GRNS.find(g=>g.poRef===po.id&&g.status==='draft');return d?`<button class="btn btn-green btn-xs" onclick="showGrnForm('${po.id}','${d.id}')">Edit Draft GRN</button>`:`<button class="btn btn-green btn-xs" onclick="showGrnForm('${po.id}',null)">Receive Balance / GRN</button>`;})():''}
+            ${po.status==='delivered'?`<span style="font-size:11px;color:var(--green);font-weight:600">✓ Completed</span>`:''}
           </div></td>
         </tr>`;
       }).join('')}
@@ -2430,13 +2430,13 @@ function viewPO(id){
   const totalFoc=po.items.reduce((s,i)=>s+(i.foc||0),0);
   openDlg(`<h3>📄 ${po.id}</h3>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;font-size:13px">
-  <div><b>Pembekal:</b> ${po.supplier}</div><div><b>Tarikh:</b> ${po.date}</div>
-  <div><b>Status:</b> ${statusPill(po.status)}</div><div><b>Jumlah Bayaran:</b> <b style="color:var(--navy)">${fmtRM(po.total)}</b></div>
+  <div><b>Supplier:</b> ${po.supplier}</div><div><b>Date:</b> ${po.date}</div>
+  <div><b>Status:</b> ${statusPill(po.status)}</div><div><b>Total Payment:</b> <b style="color:var(--navy)">${fmtRM(po.total)}</b></div>
 </div>
 <table><thead><tr>
-  <th>Produk</th><th style="text-align:center">Qty</th>
+  <th>Product</th><th style="text-align:center">Qty</th>
   <th style="text-align:center;color:var(--green)">FOC</th>
-  <th style="text-align:center">Harga/unit</th>
+  <th style="text-align:center">Price/unit</th>
   <th style="text-align:right">Subtotal</th>
 </tr></thead>
 <tbody>${po.items.map(i=>`<tr>
@@ -2451,18 +2451,18 @@ function viewPO(id){
   <td style="text-align:right;font-weight:600">${fmtRM(i.qty*(i.price||0))}</td>
 </tr>`).join('')}
 <tr style="background:var(--sand)">
-  <td colspan="4" style="font-weight:700;text-align:right">JUMLAH BAYARAN</td>
+  <td colspan="4" style="font-weight:700;text-align:right">TOTAL PAYMENT</td>
   <td style="font-weight:800;font-family:Sora;color:var(--navy);text-align:right">${fmtRM(po.total)}</td>
 </tr>
 ${totalFoc>0?`<tr style="background:var(--green-l)">
-  <td colspan="4" style="font-weight:700;text-align:right;color:var(--green)">JUMLAH FOC (Percuma)</td>
+  <td colspan="4" style="font-weight:700;text-align:right;color:var(--green)">TOTAL FOC (Free)</td>
   <td style="font-weight:800;font-family:Sora;color:var(--green);text-align:right">+${totalFoc} unit</td>
 </tr>`:''}
 </tbody></table>
-${hasFoc?`<div style="font-size:12px;color:var(--green);margin-top:10px;font-weight:600">✓ PO ini mengandungi item FOC (Free of Charge) dari pembekal</div>`:''}
+${hasFoc?`<div style="font-size:12px;color:var(--green);margin-top:10px;font-weight:600">✓ This PO contains FOC (Free of Charge) items from the supplier</div>`:''}
 <div class="dlg-footer">
-  <button class="btn btn-ghost" onclick="closeDlg()">Tutup</button>
-  <button class="btn btn-primary" onclick="printPO('${po.id}')">🖨️ Cetak</button>
+  <button class="btn btn-ghost" onclick="closeDlg()">Close</button>
+  <button class="btn btn-primary" onclick="printPO('${po.id}')">🖨️ Print</button>
 </div>`,true);
 }
 
@@ -2498,19 +2498,19 @@ td{padding:8px 10px;border:1px solid #dde3ee;vertical-align:middle}
 @media print{button{display:none}}
 </style></head><body>
 <h1>PURCHASE ORDER</h1>
-<div class="sub">${po.id} &nbsp;|&nbsp; Tarikh: ${po.date}</div>
+<div class="sub">${po.id} &nbsp;|&nbsp; Date: ${po.date}</div>
 <div class="grid">
-  <div><b>Kepada (Pembekal):</b><br><strong>${po.supplier}</strong><br>${sup.contact||''}<br>${sup.phone||''}<br>${sup.email||''}<br><span style="font-size:12px;color:#555">${sup.address||''}</span></div>
-  <div><b>Daripada:</b><br><strong>${SESSION?.org||'OrcaHub'}</strong><br><br><b>Status PO:</b> ${po.status.toUpperCase()}<br><b>Syarat Bayar:</b> ${sup.terms||'-'}</div>
+  <div><b>To (Supplier):</b><br><strong>${po.supplier}</strong><br>${sup.contact||''}<br>${sup.phone||''}<br>${sup.email||''}<br><span style="font-size:12px;color:#555">${sup.address||''}</span></div>
+  <div><b>From:</b><br><strong>${SESSION?.org||'OrcaHub'}</strong><br><br><b>PO Status:</b> ${po.status.toUpperCase()}<br><b>Payment Terms:</b> ${sup.terms||'-'}</div>
 </div>
 <table>
-  <thead><tr><th>Produk</th><th style="text-align:center;width:60px">Qty</th><th style="text-align:center;width:80px">FOC</th><th style="text-align:center;width:90px">Harga/unit</th><th style="text-align:right;width:90px">Subtotal</th></tr></thead>
-  <tbody>${rows}<tr class="total-row"><td colspan="4" style="text-align:right">JUMLAH BAYARAN</td><td style="text-align:right">RM${po.total.toFixed(2)}</td></tr>${totalFoc>0?`<tr class="foc-row"><td colspan="4" style="text-align:right">JUMLAH FOC (Percuma)</td><td style="text-align:right">+${totalFoc} unit</td></tr>`:''}</tbody>
+  <thead><tr><th>Product</th><th style="text-align:center;width:60px">Qty</th><th style="text-align:center;width:80px">FOC</th><th style="text-align:center;width:90px">Price/unit</th><th style="text-align:right;width:90px">Subtotal</th></tr></thead>
+  <tbody>${rows}<tr class="total-row"><td colspan="4" style="text-align:right">TOTAL PAYMENT</td><td style="text-align:right">RM${po.total.toFixed(2)}</td></tr>${totalFoc>0?`<tr class="foc-row"><td colspan="4" style="text-align:right">TOTAL FOC (Free)</td><td style="text-align:right">+${totalFoc} unit</td></tr>`:''}</tbody>
 </table>
 <div class="footer">
-  <div class="sig"><div class="sig-line"></div><div>Disediakan oleh</div></div>
-  <div class="sig"><div class="sig-line"></div><div>Diluluskan oleh</div></div>
-  <div class="sig"><div class="sig-line"></div><div>Diterima oleh (Pembekal)</div></div>
+  <div class="sig"><div class="sig-line"></div><div>Prepared by</div></div>
+  <div class="sig"><div class="sig-line"></div><div>Approved by</div></div>
+  <div class="sig"><div class="sig-line"></div><div>Received by (Supplier)</div></div>
 </div>
 <script>window.onload=function(){window.print();window.onafterprint=function(){window.close();}}<\/script>
 </body></html>`);
@@ -3144,11 +3144,11 @@ function markPoDelivered(poId){
 
 function hqConfirmPO(poId){
   const po=POS.find(x=>x.id===poId);if(!po||po.status!=='pending')return;
-  showConfirm('Hantar ke Pembekal','PO '+poId+' akan ditandakan sebagai sudah dihantar kepada pembekal. Barang sedang dalam proses.','Ya, Sudah Dihantar',async()=>{
+  showConfirm('Send to Supplier','PO '+poId+' will be marked as sent to the supplier. Goods are being processed.','Yes, Sent',async()=>{
     po.status='confirmed';
     await savePOs();
     navTo('hq-po');
-    toast('✓ PO '+poId+' — Menunggu Barang dari Pembekal');
+    toast('✓ PO '+poId+' — Awaiting Goods from Supplier');
   });
 }
 
