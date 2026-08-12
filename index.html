@@ -1542,6 +1542,8 @@ function pageHqScanLog(){
   rows.sort((a,b)=>b.ts.localeCompare(a.ts));
   const pillMap={ok:'p-done',earlier:'p-process',blocked:'p-cancel',expired:'p-cancel',notfound:'p-pending'};
   const labelMap={ok:'Berjaya',earlier:'Awal Diterima',blocked:'Dihalang',expired:'Luput',notfound:'Tak Jumpa'};
+  const actionLabelMap={pick:'Picking',grn:'GRN',stocktake:'Stocktake',adjustment:'Adjustment'};
+  const actionPillMap={pick:'p-process',grn:'p-done',stocktake:'p-process',adjustment:'p-new'};
   return `<div class="page-head"><h2>📋 Log Scan</h2><p>Rekod audit semua percubaan scan batch — untuk keperluan GDPMD</p></div>
 <div class="card">
   <div class="card-h">
@@ -1560,7 +1562,7 @@ function pageHqScanLog(){
         return`<tr style="${rowBg}">
           <td style="font-size:12px;white-space:nowrap">${new Date(s.ts).toLocaleString('ms-MY',{dateStyle:'short',timeStyle:'short'})}</td>
           <td>${s.user}</td>
-          <td><span class="pill ${s.action==='pick'?'p-process':'p-done'}">${s.action==='pick'?'Pick':'GRN'}</span></td>
+          <td><span class="pill ${actionPillMap[s.action]||'p-done'}">${actionLabelMap[s.action]||s.action}</span></td>
           <td style="font-family:monospace;font-size:12px">${s.code}</td>
           <td style="font-size:12px">${s.batchNo||'—'}</td>
           <td><span class="pill ${pillMap[s.result]||'p-pending'}">${labelMap[s.result]||s.result}</span></td>
