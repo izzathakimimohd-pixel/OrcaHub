@@ -2570,7 +2570,7 @@ function buildGrnRowCells(rid,pid,qtyPO,qtyRcv,item){
   const dis=isComplete?'disabled':'';
   const lockStyle=isComplete?'background:#f1f1f1;color:#999;cursor:not-allowed':'';
   const bakiStyle=isComplete?'color:var(--green);font-weight:700':'';
-  const nameTag=isComplete?' <span style="font-size:10px;background:#e6f7ee;color:#0f6e56;padding:1px 7px;border-radius:10px;white-space:nowrap">✓ Lengkap</span>':'';
+  const nameTag=isComplete?' <span style="font-size:10px;background:#e6f7ee;color:#0f6e56;padding:1px 7px;border-radius:10px;white-space:nowrap">✓ Complete</span>':'';
   return `
     <td style="white-space:nowrap;min-width:150px">${pr.name||pid}${nameTag}</td>
     <td style="text-align:center">${qtyPO||'—'}</td>
@@ -2582,9 +2582,9 @@ function buildGrnRowCells(rid,pid,qtyPO,qtyRcv,item){
     <td><input id="grn_dp_${rid}" type="number" min="0" max="100" step="0.01" value="${dp}" ${dis} style="width:55px;text-align:right;${lockStyle}" onchange="calcGrnRow('${rid}')"></td>
     <td><input id="grn_da_${rid}" type="number" min="0" step="0.01" value="${da.toFixed(2)}" ${dis} style="width:70px;text-align:right;${lockStyle}" onchange="calcGrnRow('${rid}')"></td>
     <td id="grn_sub_${rid}" style="text-align:right;font-weight:600;white-space:nowrap;min-width:85px">${fmtRM(calcGrnSubtotal(qty,up,dp,da))}</td>
-    <td><input id="grn_batch_${rid}" placeholder="No. Batch" value="${batchNo}" ${dis} style="width:105px;${lockStyle}"></td>
+    <td><input id="grn_batch_${rid}" placeholder="Batch No." value="${batchNo}" ${dis} style="width:105px;${lockStyle}"></td>
     <td><input id="grn_expiry_${rid}" type="date" value="${expiry}" ${dis} style="width:100px;${lockStyle}"></td>
-    <td style="text-align:center">${isComplete?'':`<button class="btn btn-ghost btn-xs" onclick="removeGrnRow('${rid}')" title="Buang">✕</button>`}</td>`;
+    <td style="text-align:center">${isComplete?'':`<button class="btn btn-ghost btn-xs" onclick="removeGrnRow('${rid}')" title="Remove">✕</button>`}</td>`;
 }
 
 function addGrnExtraRow(){
@@ -2599,16 +2599,16 @@ function addGrnExtraRow(){
   tr.innerHTML=`<td colspan="13" style="padding:8px">
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <select id="grn_extpid_${rid}" style="flex:1;min-width:160px">
-        <option value="">-- Pilih Produk --</option>${pidOpts}
+        <option value="">-- Select Product --</option>${pidOpts}
       </select>
-      <button class="btn btn-ghost btn-xs" onclick="applyGrnExtraRow('${rid}')">Tambah</button>
+      <button class="btn btn-ghost btn-xs" onclick="applyGrnExtraRow('${rid}')">Add</button>
     </div></td>`;
   tbody.appendChild(tr);
 }
 
 function applyGrnExtraRow(rid){
   const sel=document.getElementById('grn_extpid_'+rid);if(!sel)return;
-  const pid=sel.value;if(!pid){toast('Sila pilih produk');return;}
+  const pid=sel.value;if(!pid){toast('Please select product');return;}
   const tr=document.querySelector('#grnFormTbody tr[data-rowid="'+rid+'"]');if(!tr)return;
   tr.setAttribute('data-pid',pid);
   tr.setAttribute('data-qtypo','0');
@@ -2618,12 +2618,12 @@ function applyGrnExtraRow(rid){
 
 function onScanGrnForm(rid,code){
   const scanned=findBatchByCode(code);
-  if(!scanned){toast('❌ Kod batch tidak dikenali');return;}
+  if(!scanned){toast('❌ Batch code not recognized');return;}
   const bEl=document.getElementById('grn_batch_'+rid);
   const eEl=document.getElementById('grn_expiry_'+rid);
   if(bEl) bEl.value=scanned.batchNo;
   if(eEl) eEl.value=scanned.expiry;
-  toast('✅ Batch ditemui');
+  toast('✅ Batch found');
 }
 
 function collectGrnFormData(){
@@ -2654,19 +2654,19 @@ function collectGrnFormData(){
 
 function validateGrn(data,draft,currentGrnId){
   if(!draft){
-    if(!data.doNo&&!data.invNo){toast('❌ Isi sekurang-kurangnya No. D/O atau No. Invois');return false;}
+    if(!data.doNo&&!data.invNo){toast('❌ Enter at least D/O No. or Invoice No.');return false;}
     if(data.doNo){
       const dup=GRNS.find(g=>g.id!==currentGrnId&&(g.doNo||'').trim()!==''&&(g.doNo||'').trim().toLowerCase()===data.doNo.trim().toLowerCase());
-      if(dup){toast('❌ No. D/O "'+data.doNo+'" sudah digunakan di '+dup.id+'. Sila semak semula.');return false;}
+      if(dup){toast('❌ D/O No. "'+data.doNo+'" already used in '+dup.id+'. Please check again.');return false;}
     }
   }
-  if(!data.rows.length){toast('❌ Tiada item dalam GRN');return false;}
+  if(!data.rows.length){toast('❌ No items in GRN');return false;}
   if(!draft){
     for(const r of data.rows){
       if(r.qty<=0) continue;
-      if(!r.batchNo){toast('❌ No. Batch diperlukan untuk '+pname(r.pid));return false;}
-      if(!r.expiry){toast('❌ Tarikh luput diperlukan untuk '+pname(r.pid));return false;}
-      if(r.expiry<=today()){toast('❌ Tarikh luput mesti akan datang untuk '+pname(r.pid));return false;}
+      if(!r.batchNo){toast('❌ Batch No. required for '+pname(r.pid));return false;}
+      if(!r.expiry){toast('❌ Expiry date required for '+pname(r.pid));return false;}
+      if(r.expiry<=today()){toast('❌ Expiry date must be in the future for '+pname(r.pid));return false;}
     }
   }
   return true;
@@ -2712,7 +2712,7 @@ function pageHqGrnForm(){
   const poId=_grnCtx.poId;
   const grnId=_grnCtx.grnId;
   const po=POS.find(x=>x.id===poId);
-  if(!po) return `<div class="page-head"><h2>📦 Borang GRN</h2></div><div class="card"><div class="empty-state"><div class="empty-icon">⚠️</div><h4>Tiada PO dipilih</h4><button class="btn btn-ghost" onclick="navTo('hq-grn')">← Kembali ke GRN</button></div></div>`;
+  if(!po) return `<div class="page-head"><h2>📦 GRN Form</h2></div><div class="card"><div class="empty-state"><div class="empty-icon">⚠️</div><h4>No PO selected</h4><button class="btn btn-ghost" onclick="navTo('hq-grn')">← Back to GRN</button></div></div>`;
   const draft=grnId?GRNS.find(x=>x.id===grnId&&x.status==='draft'):null;
   _grnRidCounter=0;
   const sup=SUPPLIERS.find(s=>s.name===po.supplier)||{};
@@ -2730,57 +2730,57 @@ function pageHqGrnForm(){
   const discAmt=draft?.discAmt||0;
   const subtotal=draft?.subtotal||0;
   const total=draft?.total||0;
-  const title=draft?'Edit Draf GRN':'GRN Baru';
+  const title=draft?'Edit Draft GRN':'New GRN';
   return `<div class="page-head">
   <div>
-    <button class="btn btn-ghost btn-sm" onclick="navTo('hq-grn')" style="margin-bottom:8px">← Kembali ke GRN</button>
+    <button class="btn btn-ghost btn-sm" onclick="navTo('hq-grn')" style="margin-bottom:8px">← Back to GRN</button>
     <h2>📦 ${title} — ${poId}</h2>
-    <p style="color:var(--grey)">${po.supplier} &nbsp;·&nbsp; ${po.date}${po.status==='partial'?' &nbsp;·&nbsp; <span style="color:var(--orange,#e67e22)">Penghantaran Separa</span>':''}</p>
+    <p style="color:var(--grey)">${po.supplier} &nbsp;·&nbsp; ${po.date}${po.status==='partial'?' &nbsp;·&nbsp; <span style="color:var(--orange,#e67e22)">Partial Delivery</span>':''}</p>
   </div>
   <div style="display:flex;gap:8px">
-    <button class="btn btn-ghost" onclick="saveGrnDraft('${poId}','${grnId||''}')">💾 Simpan Draf</button>
-    <button class="btn btn-primary" onclick="postGRN('${poId}','${grnId||''}')">✅ Sahkan & Kemaskini Stok</button>
+    <button class="btn btn-ghost" onclick="saveGrnDraft('${poId}','${grnId||''}')">💾 Save Draft</button>
+    <button class="btn btn-primary" onclick="postGRN('${poId}','${grnId||''}')">✅ Confirm & Update Stock</button>
   </div>
 </div>
 <div class="card grn-card-tall">
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;padding-top:8px">
-    <div class="fld"><label>No. D/O</label><input id="grn_doNo" placeholder="cth: DO-2026-001" value="${doNo}"></div>
-    <div class="fld"><label>No. Invois</label><input id="grn_invNo" placeholder="cth: INV-2026-001" value="${invNo}"></div>
-    <div class="fld"><label>Tarikh GRN</label><input id="grn_date" type="date" value="${grnDate}"></div>
-    <div class="fld"><label>Pembekal</label><input value="${po.supplier}" disabled></div>
-    <div class="fld"><label>Terma Kredit</label><input id="grn_term" placeholder="cth: Net 30" value="${creditTerm}"></div>
+    <div class="fld"><label>D/O No.</label><input id="grn_doNo" placeholder="e.g. DO-2026-001" value="${doNo}"></div>
+    <div class="fld"><label>Invoice No.</label><input id="grn_invNo" placeholder="e.g. INV-2026-001" value="${invNo}"></div>
+    <div class="fld"><label>GRN Date</label><input id="grn_date" type="date" value="${grnDate}"></div>
+    <div class="fld"><label>Supplier</label><input value="${po.supplier}" disabled></div>
+    <div class="fld"><label>Credit Terms</label><input id="grn_term" placeholder="e.g. Net 30" value="${creditTerm}"></div>
   </div>
   <div style="overflow-x:auto">
   <table>
     <thead><tr>
-      <th style="min-width:160px">Produk</th>
+      <th style="min-width:160px">Product</th>
       <th style="text-align:center;min-width:65px">Qty PO</th>
-      <th style="text-align:center;min-width:75px">Sudah Terima</th>
-      <th style="text-align:center;min-width:60px">Baki</th>
-      <th style="text-align:center;min-width:85px">Qty Terima Kali Ini</th>
+      <th style="text-align:center;min-width:75px">Received</th>
+      <th style="text-align:center;min-width:60px">Balance</th>
+      <th style="text-align:center;min-width:85px">Qty This Time</th>
       <th style="text-align:center;min-width:55px">FOC</th>
-      <th style="text-align:right;min-width:90px">Harga/Unit (RM)</th>
+      <th style="text-align:right;min-width:90px">Price/Unit (RM)</th>
       <th style="text-align:right;min-width:65px">Disc %</th>
       <th style="text-align:right;min-width:80px">Disc RM</th>
       <th style="text-align:right;min-width:90px">Subtotal</th>
-      <th style="min-width:120px">No. Batch <span style="color:red">*</span></th>
-      <th style="min-width:110px">T. Luput <span style="color:red">*</span></th>
+      <th style="min-width:120px">Batch No. <span style="color:red">*</span></th>
+      <th style="min-width:110px">Expiry <span style="color:red">*</span></th>
       <th></th>
     </tr></thead>
     <tbody id="grnFormTbody">${tbody}</tbody>
   </table>
   </div>
   <div style="display:flex;justify-content:flex-end;align-items:center;gap:16px;font-size:13px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
-    <button class="btn btn-ghost btn-xs" onclick="addGrnExtraRow()">+ Tambah Baris</button>
-    <span>Jumlah Kecil: <b id="grn_total_sub">${fmtRM(subtotal)}</b></span>
-    <span>Diskaun: RM <input id="grn_total_disc" type="number" min="0" step="0.01" value="${discAmt.toFixed(2)}" style="width:80px;text-align:right" onchange="updateGrnTotals()"></span>
-    <span>JUMLAH: <b id="grn_total_amt" style="font-size:16px;color:var(--navy)">${fmtRM(total)}</b></span>
+    <button class="btn btn-ghost btn-xs" onclick="addGrnExtraRow()">+ Add Row</button>
+    <span>Subtotal: <b id="grn_total_sub">${fmtRM(subtotal)}</b></span>
+    <span>Discount: RM <input id="grn_total_disc" type="number" min="0" step="0.01" value="${discAmt.toFixed(2)}" style="width:80px;text-align:right" onchange="updateGrnTotals()"></span>
+    <span>TOTAL: <b id="grn_total_amt" style="font-size:16px;color:var(--navy)">${fmtRM(total)}</b></span>
   </div>
 </div>
 <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;padding-bottom:24px">
-  <button class="btn btn-ghost" onclick="navTo('hq-grn')">← Kembali</button>
-  <button class="btn btn-ghost" onclick="saveGrnDraft('${poId}','${grnId||''}')">💾 Simpan Draf</button>
-  <button class="btn btn-primary" onclick="postGRN('${poId}','${grnId||''}')">✅ Sahkan & Kemaskini Stok</button>
+  <button class="btn btn-ghost" onclick="navTo('hq-grn')">← Back</button>
+  <button class="btn btn-ghost" onclick="saveGrnDraft('${poId}','${grnId||''}')">💾 Save Draft</button>
+  <button class="btn btn-primary" onclick="postGRN('${poId}','${grnId||''}')">✅ Confirm & Update Stock</button>
 </div>`;
 }
 
@@ -2794,7 +2794,7 @@ async function saveGrnDraft(poId,grnId){
       creditTerm:data.creditTerm,items:data.rows,subtotal:data.subtotal,discAmt:data.discAmt,total:data.total});
     await saveGRNs();
     navTo('hq-grn');
-    toast('💾 Draf '+existing.id+' disimpan');
+    toast('💾 Draft '+existing.id+' saved');
   }else{
     const grn={id:uid('GRN'),poRef:poId,supplierId:SUPPLIERS.find(s=>s.name===po.supplier)?.id||'',
       supplierName:po.supplier,doNo:data.doNo,invNo:data.invNo,grnDate:data.grnDate,
@@ -2803,7 +2803,7 @@ async function saveGrnDraft(poId,grnId){
     GRNS.push(grn);
     await saveGRNs();
     navTo('hq-grn');
-    toast('💾 Draf '+grn.id+' disimpan');
+    toast('💾 Draft '+grn.id+' saved');
   }
 }
 
@@ -2819,9 +2819,9 @@ function postGRN(poId,grnId){
   if(overWarnings.length){
     const lines=overWarnings.map(r=>{
       const baki=Math.max(0,r.qtyOrdered-r.qtyAlreadyRcv);
-      return `${pname(r.pid)} (terima: ${r.qty}, baki: ${baki})`;
+      return `${pname(r.pid)} (received: ${r.qty}, balance: ${baki})`;
     }).join('\n');
-    showConfirm('⚠️ Melebihi Baki PO',lines+'\n\nTeruskan?','Ya, Sahkan',()=>doPostGRN(poId,grnId,data));
+    showConfirm('⚠️ Exceeds PO Balance',lines+'\n\nContinue?','Yes, Confirm',()=>doPostGRN(poId,grnId,data));
   }else{
     doPostGRN(poId,grnId,data);
   }
@@ -2858,12 +2858,12 @@ async function doPostGRN(poId,grnId,data){
   else if(anyRcv) po.status='partial';
   await Promise.all([saveGRNs(),saveProducts(),saveBatches(),savePOs()]);
   navTo('hq-grn');
-  toast('✅ GRN '+grnIdFinal+' disahkan. Stok & batch dikemaskini.'+(allFull?' PO lengkap — status Dihantar.':' PO separa — boleh GRN lagi untuk baki.'));
+  toast('✅ GRN '+grnIdFinal+' confirmed. Stock & batches updated.'+(allFull?' PO complete — status Delivered.':' PO partial — GRN again for the balance.'));
 }
 
 function editGRN(id){
   const g=GRNS.find(x=>x.id===id);
-  if(!g||g.status!=='draft'){toast('Hanya draf boleh diedit');return;}
+  if(!g||g.status!=='draft'){toast('Only drafts can be edited');return;}
   showGrnForm(g.poRef,id);
 }
 
@@ -2977,36 +2977,36 @@ table{width:100%;border-collapse:collapse;margin-bottom:12px}th,td{border:1px so
 .sig{text-align:center;font-size:11px}.sig-line{border-top:1px solid #333;margin-top:35px;margin-bottom:4px}
 @media print{body{padding:15mm 12mm}}</style></head><body>
 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
-  <div><div class="co">OrcaHub Sdn Bhd</div><div style="font-size:11px;color:#555">Sistem Pengurusan Farmasi</div></div>
-  <div style="text-align:right;font-size:11px"><div><b>No. GRN: ${g.id}</b></div><div>Rujukan PO: ${g.poRef}</div><div>Tarikh: ${g.grnDate||g.date||''}</div></div>
+  <div><div class="co">OrcaHub Sdn Bhd</div><div style="font-size:11px;color:#555">Pharmacy Management System</div></div>
+  <div style="text-align:right;font-size:11px"><div><b>No. GRN: ${g.id}</b></div><div>PO Ref: ${g.poRef}</div><div>Date: ${g.grnDate||g.date||''}</div></div>
 </div>
-<div class="doc-title">Nota Penerimaan Barangan (GRN)</div>
+<div class="doc-title">Goods Received Note (GRN)</div>
 <div class="meta">
-  <div><div class="lbl">Pembekal</div><div style="font-weight:700">${g.supplierName||g.supplier||''}</div>${sup.address?`<div style="font-size:11px;color:#555">${sup.address}</div>`:''}</div>
+  <div><div class="lbl">Supplier</div><div style="font-weight:700">${g.supplierName||g.supplier||''}</div>${sup.address?`<div style="font-size:11px;color:#555">${sup.address}</div>`:''}</div>
   <div>
-    <div><span class="lbl">No. D/O: </span>${g.doNo||'—'}</div>
-    <div><span class="lbl">No. Invois: </span>${g.invNo||'—'}</div>
-    <div><span class="lbl">Terma Kredit: </span>${g.creditTerm||'—'}</div>
-    <div><span class="lbl">Diterima Oleh: </span>${g.receivedBy||''}</div>
-    <div><span class="lbl">Status: </span>${g.status==='posted'?'Selesai':'Draf'}</div>
+    <div><span class="lbl">D/O No.: </span>${g.doNo||'—'}</div>
+    <div><span class="lbl">Invoice No.: </span>${g.invNo||'—'}</div>
+    <div><span class="lbl">Credit Terms: </span>${g.creditTerm||'—'}</div>
+    <div><span class="lbl">Received By: </span>${g.receivedBy||''}</div>
+    <div><span class="lbl">Status: </span>${g.status==='posted'?'Completed':'Draft'}</div>
   </div>
 </div>
 <table><thead><tr>
-  <th style="width:28px">Bil</th><th>Produk</th>
+  <th style="width:28px">No.</th><th>Product</th>
   <th style="text-align:center;width:50px">Qty</th><th style="text-align:center;width:40px">FOC</th>
-  <th style="text-align:right;width:80px">Harga/Unit</th><th style="text-align:right;width:50px">Disc%</th>
+  <th style="text-align:right;width:80px">Price/Unit</th><th style="text-align:right;width:50px">Disc%</th>
   <th style="text-align:right;width:65px">Disc RM</th><th style="text-align:right;width:80px">Subtotal</th>
-  <th style="width:95px">No. Batch</th><th style="width:80px">T. Luput</th>
+  <th style="width:95px">Batch No.</th><th style="width:80px">Expiry</th>
 </tr></thead><tbody>${itemRows}</tbody></table>
 <table class="tot" style="width:auto;margin-left:auto">
-  <tr><td>Jumlah Kecil:</td><td style="font-weight:600">RM ${(g.subtotal||0).toFixed(2)}</td></tr>
-  <tr><td>Diskaun:</td><td>RM ${(g.discAmt||0).toFixed(2)}</td></tr>
-  <tr><td style="font-weight:700;font-size:14px">JUMLAH BAYARAN:</td><td style="font-weight:700;font-size:14px">RM ${(g.total||0).toFixed(2)}</td></tr>
+  <tr><td>Subtotal:</td><td style="font-weight:600">RM ${(g.subtotal||0).toFixed(2)}</td></tr>
+  <tr><td>Discount:</td><td>RM ${(g.discAmt||0).toFixed(2)}</td></tr>
+  <tr><td style="font-weight:700;font-size:14px">TOTAL PAYMENT:</td><td style="font-weight:700;font-size:14px">RM ${(g.total||0).toFixed(2)}</td></tr>
 </table>
 <div class="sig-row">
-  <div class="sig"><div class="sig-line"></div><div>Disediakan oleh</div></div>
-  <div class="sig"><div class="sig-line"></div><div>Disemak oleh (HQ)</div></div>
-  <div class="sig"><div class="sig-line"></div><div>Pengesahan Pembekal</div></div>
+  <div class="sig"><div class="sig-line"></div><div>Prepared by</div></div>
+  <div class="sig"><div class="sig-line"></div><div>Checked by (HQ)</div></div>
+  <div class="sig"><div class="sig-line"></div><div>Supplier Confirmation</div></div>
 </div>
 <script>window.onload=function(){window.print();window.onafterprint=function(){window.close();}}<\/script>
 </body></html>`);
