@@ -586,7 +586,7 @@ tbody tr:hover td{background:var(--sand)}
     <aside class="sidebar" id="sidebar">
       <nav class="side-nav" id="sideNav"></nav>
       <div class="side-bottom">
-        <button class="side-logout" onclick="logout()">🚪 Log Keluar</button>
+        <button class="side-logout" onclick="logout()">🚪 Log Out</button>
       </div>
     </aside>
 
@@ -609,8 +609,8 @@ tbody tr:hover td{background:var(--sand)}
     <div id="umOrg" style="font-size:12px;color:var(--grey)"></div>
   </div>
   <div style="padding:8px">
-    <button onclick="navTo('settings');closeUserMenu()" class="side-link" style="width:100%"><span class="ic">⚙️</span> Tetapan</button>
-    <button onclick="logout()" class="side-logout" style="width:100%;text-align:left">🚪 Log Keluar</button>
+    <button onclick="navTo('settings');closeUserMenu()" class="side-link" style="width:100%"><span class="ic">⚙️</span> Settings</button>
+    <button onclick="logout()" class="side-logout" style="width:100%;text-align:left">🚪 Log Out</button>
   </div>
 </div>
 
@@ -712,9 +712,9 @@ async function loadData(){
 async function saveStocktakes(){await STORE.set('oh_stocktakes',JSON.stringify(STOCKTAKES));}
 
 async function resetDemoData(){
-  showConfirm('Reset Data Demo',
-    'Semua data akan dipadam dan diganti data demo asal. Teruskan?',
-    'Ya, Reset',async()=>{
+  showConfirm('Reset Demo Data',
+    'All data will be deleted and replaced with the original demo data. Continue?',
+    'Yes, Reset',async()=>{
       const keys=['oh_products','oh_pos','oh_grns','oh_batches',
         'oh_scanlog','oh_suppliers','oh_categories',
         'oh_b2b_orders','oh_b2c_orders','oh_stocktakes'];
@@ -730,7 +730,7 @@ async function resetDemoData(){
         try{ if(window.storage?.delete) await window.storage.delete(k); }catch(e){}
         try{ localStorage.removeItem(k); }catch(e){}
       }
-      toast('✓ Data demo direset — memuat semula...');
+      toast('✓ Demo data reset — reloading...');
       setTimeout(()=>location.reload(),700);
     });
 }
@@ -876,7 +876,7 @@ function scanInput(id,placeholder,onEnterCode){
         style="flex:1;background:none;border:none;font-size:13px;color:var(--ink);font-family:monospace"
         onkeydown="if(event.key==='Enter'){event.preventDefault();const scanVal=this.value.trim();if(scanVal){${onEnterCode};this.value='';this.focus();}}">
     </div>
-    <div style="font-size:11px;color:var(--grey);margin-top:3px;padding-left:2px">Scan barcode atau taip kod batch, kemudian tekan Enter</div>
+    <div style="font-size:11px;color:var(--grey);margin-top:3px;padding-left:2px">Scan the barcode or type the batch code, then press Enter</div>
   </div>`;
 }
 function focusScan(id){setTimeout(()=>{const el=document.getElementById(id);if(el)el.focus();},150);}
@@ -903,14 +903,14 @@ function pickAuthRole(r){
   document.getElementById('authPass').value='';
 }
 async function doLogin(){
-  if(!DEMO_MODE){toast('❌ Log masuk demo dimatikan');return;}
+  if(!DEMO_MODE){toast('❌ Demo login is disabled');return;}
   const u=document.getElementById('authUser').value.trim();
   const p=document.getElementById('authPass').value;
-  if(!u||!p){toast('❌ Sila isi username dan password');return;}
+  if(!u||!p){toast('❌ Please enter username and password');return;}
   const acc=ACCOUNTS[u];
-  if(!acc||acc.pass!==p){toast('❌ Username atau password salah');return;}
+  if(!acc||acc.pass!==p){toast('❌ Username or password incorrect');return;}
   if(acc.role!==_authRole&&!(acc.role==='branch'&&_authRole==='branch')){
-    toast('❌ Peranan tidak padan dengan akaun ini');return;
+    toast('❌ Role does not match this account');return;
   }
   SESSION={username:u,...acc};
   closeAuth();
@@ -924,30 +924,30 @@ function seedNotifs(){
   const r=SESSION.role;
   if(r==='superadmin'){
     NOTIFS=[
-      {id:1,msg:'Tenant baru mendaftar: Klinik Al-Shifa',time:'2 min lepas',read:false},
-      {id:2,msg:'MediCare Group upgrade ke Enterprise plan',time:'1 jam lepas',read:false},
-      {id:3,msg:'Platform uptime 99.9% — semua sistem normal',time:'3 jam lepas',read:true},
+      {id:1,msg:'New tenant registered: Klinik Al-Shifa',time:'2 minutes ago',read:false},
+      {id:2,msg:'MediCare Group upgraded to Enterprise plan',time:'1 hour ago',read:false},
+      {id:3,msg:'Platform uptime 99.9% — all systems normal',time:'3 hours ago',read:true},
     ];
   }else if(r==='hq'){
     NOTIFS=[
-      {id:1,msg:`${b2bPending()} order B2B baru menunggu lulus`,time:'Sebentar tadi',read:false},
-      {id:2,msg:'Stok Atorvastatin 10mg kritikal (45 unit)',time:'1 jam lepas',read:false},
-      {id:3,msg:'PO-002 disahkan oleh PharmaCo Supply',time:'2 jam lepas',read:true},
+      {id:1,msg:`${b2bPending()} new B2B orders awaiting approval`,time:'Just now',read:false},
+      {id:2,msg:'Atorvastatin 10mg stock critical (45 units)',time:'1 hour ago',read:false},
+      {id:3,msg:'PO-002 confirmed by PharmaCo Supply',time:'2 hours ago',read:true},
     ];
   }else if(r==='branch'){
     NOTIFS=[
-      {id:1,msg:'Order B2B-003 telah dihantar',time:'1 hari lepas',read:false},
-      {id:2,msg:'Order B2B-002 sedang diproses',time:'5 hari lepas',read:true},
+      {id:1,msg:'Order B2B-003 has been shipped',time:'1 day ago',read:false},
+      {id:2,msg:'Order B2B-002 is being processed',time:'5 days ago',read:true},
     ];
   }else if(r==='customer'){
     NOTIFS=[
-      {id:1,msg:'Order B2C-001 anda sedang diproses',time:'Sebentar tadi',read:false},
-      {id:2,msg:'Order B2C-004 telah sampai',time:'2 hari lepas',read:true},
+      {id:1,msg:'Your order B2C-001 is being processed',time:'Just now',read:false},
+      {id:2,msg:'Order B2C-004 has arrived',time:'2 days ago',read:true},
     ];
   }else if(r==='supplier'){
     NOTIFS=[
-      {id:1,msg:'PO baru diterima: PO-003 (RM1,320)',time:'Sebentar tadi',read:false},
-      {id:2,msg:'PO-002 disahkan — sila hantar',time:'2 hari lepas',read:true},
+      {id:1,msg:'New PO received: PO-003 (RM1,320)',time:'Just now',read:false},
+      {id:2,msg:'PO-002 confirmed — please ship',time:'2 days ago',read:true},
     ];
   }
 }
@@ -1024,7 +1024,7 @@ function showSyncPulse(){
   clearTimeout(bar._t);
   bar._t=setTimeout(()=>bar.style.opacity='0',1800);
   updateTabTitle();
-  toast('🔄 Data dikemaskini dari tab lain');
+  toast('🔄 Data updated from another tab');
 }
 
 // Just update the notification dot without re-render
@@ -1086,7 +1086,7 @@ const MENUS={
   hq:[
     {id:'hq-dashboard',ic:'🏠',label:'Dashboard'},
     {sect:'B2B Procurement'},
-    {id:'hq-b2b-orders',ic:'📋',label:'Order B2B',badge:'b2b'},
+    {id:'hq-b2b-orders',ic:'📋',label:'B2B Orders',badge:'b2b'},
     {id:'hq-catalog',   ic:'📦',label:'Product Catalog'},
     {id:'hq-batches',   ic:'🗓️',label:'Batch & Expiry',badge:'expiry'},
     {id:'hq-stocktake', ic:'📋',label:'Stocktake'},
@@ -1095,7 +1095,7 @@ const MENUS={
     {id:'hq-po',        ic:'📄',label:'Purchase Orders',badge:'po'},
     {id:'hq-grn',       ic:'✅',label:'GRN'},
     {sect:'B2C Commerce'},
-    {id:'hq-b2c-orders',ic:'🛒',label:'Order B2C',badge:'b2c'},
+    {id:'hq-b2c-orders',ic:'🛒',label:'B2C Orders',badge:'b2c'},
     {sect:'Reports'},
     {id:'hq-purchase-report',ic:'🧾',label:'Purchase Report'},
     {id:'hq-analytics', ic:'📊',label:'Analytics'},
@@ -1182,8 +1182,8 @@ function toggleNotif(){
     NOTIFS.forEach(n=>n.read=true);
     document.getElementById('notifDot').style.display='none';
     p.innerHTML=`<div class="notif-panel">
-      <div class="notif-h"><h4>🔔 Notifikasi</h4><button onclick="document.getElementById('notifPanel').style.display='none'" style="background:none;font-size:18px;color:var(--grey)">✕</button></div>
-      ${NOTIFS.length?NOTIFS.map(n=>`<div class="notif-item ${n.read?'':'unread'}"><div class="nt">${n.msg}</div><div class="ns">${n.time}</div></div>`).join(''):'<div class="empty-state" style="padding:24px"><p>Tiada notifikasi</p></div>'}
+      <div class="notif-h"><h4>🔔 Notifications</h4><button onclick="document.getElementById('notifPanel').style.display='none'" style="background:none;font-size:18px;color:var(--grey)">✕</button></div>
+      ${NOTIFS.length?NOTIFS.map(n=>`<div class="notif-item ${n.read?'':'unread'}"><div class="nt">${n.msg}</div><div class="ns">${n.time}</div></div>`).join(''):'<div class="empty-state" style="padding:24px"><p>No notifications</p></div>'}
     </div>`;
     p.style.display='block';
   }else{p.style.display='none';}
@@ -1210,7 +1210,7 @@ function logout(){
   document.getElementById('landing').style.display='block';
   document.getElementById('authUser').value='';
   document.getElementById('authPass').value='';
-  toast('✓ Log keluar berjaya');
+  toast('✓ Logged out successfully');
 }
 
 // ===== CONFIRM DIALOG =====
@@ -1272,7 +1272,7 @@ function renderPage(){
   else if(pg==='sup-po')      c.innerHTML=pageSupPO();
   else if(pg==='sup-delivery')c.innerHTML=pageSupDelivery();
   else if(pg==='settings')    c.innerHTML=pageSettings();
-  else c.innerHTML=`<div class="empty-state"><div class="empty-icon">🚧</div><h4>Halaman dalam pembangunan</h4></div>`;
+  else c.innerHTML=`<div class="empty-state"><div class="empty-icon">🚧</div><h4>Page under construction</h4></div>`;
 }
 
 // ===== THEME =====
@@ -1627,7 +1627,7 @@ function pageHqBatches(){
           <td style="font-size:12px;color:var(--grey)">${b.grnRef||'—'}</td>
           <td><button class="btn btn-ghost btn-xs" onclick="showPrintLabel('${b.id}')">🖨️ Print</button></td>
         </tr>`;
-      }).join(''):`<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">🗓️</div><h4>Tiada batch</h4></div></td></tr>`}
+      }).join(''):`<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">🗓️</div><h4>No batches</h4></div></td></tr>`}
     </tbody>
   </table></div>
 </div>`;
@@ -3134,11 +3134,11 @@ function printStocktakeReport(stId){
 
 function markPoDelivered(poId){
   const po=POS.find(x=>x.id===poId);if(!po||po.status!=='confirmed')return;
-  showConfirm('Tanda Dihantar','Tandakan PO '+poId+' sebagai sudah dihantar oleh pembekal?','Ya, Dihantar',async()=>{
+  showConfirm('Mark Shipped','Mark PO '+poId+' as shipped by the supplier?','Yes, Shipped',async()=>{
     po.status='delivered';
     await savePOs();
     navTo('hq-po');
-    toast('✓ PO '+poId+' ditanda Dihantar');
+    toast('✓ PO '+poId+' marked as Shipped');
   });
 }
 
@@ -3687,7 +3687,7 @@ function pageSupDashboard(){
 function pageSupProducts(){
   return `<div class="page-head"><h2>📦 Supplied Products</h2><p>List of products you supply to customers</p></div>
 <div class="card">
-  <div class="card-h"><h3>Produk (${PRODUCTS.length})</h3></div>
+  <div class="card-h"><h3>Products (${PRODUCTS.length})</h3></div>
   ${PRODUCTS.map(p=>`<div class="prod-row">
     <div class="pemoji"></div>
     <div class="prod-row-info">
