@@ -1875,12 +1875,12 @@ function statusPill(s){
 function pageHqB2bOrders(){
   let filter=window._b2bFilter||'all';
   const shown=filter==='all'?B2B_ORDERS:B2B_ORDERS.filter(o=>o.status===filter);
-  return `<div class="page-head"><h2>📋 Order B2B dari Cawangan</h2><p>Semak, lulus dan proses order dari cawangan/klinik</p></div>
+  return `<div class="page-head"><h2>📋 B2B Orders from Branches</h2><p>Review, approve and process orders from branches/clinics</p></div>
 <div class="tabs">
-  <button class="${filter==='all'?'on':''}" onclick="window._b2bFilter='all';navTo('hq-b2b-orders')">Semua <span class="nb">${B2B_ORDERS.length}</span></button>
-  <button class="${filter==='new'?'on':''}" onclick="window._b2bFilter='new';navTo('hq-b2b-orders')">Baru <span class="nb">${B2B_ORDERS.filter(o=>o.status==='new').length}</span></button>
-  <button class="${filter==='process'?'on':''}" onclick="window._b2bFilter='process';navTo('hq-b2b-orders')">Diproses</button>
-  <button class="${filter==='done'?'on':''}" onclick="window._b2bFilter='done';navTo('hq-b2b-orders')">Selesai</button>
+  <button class="${filter==='all'?'on':''}" onclick="window._b2bFilter='all';navTo('hq-b2b-orders')">All <span class="nb">${B2B_ORDERS.length}</span></button>
+  <button class="${filter==='new'?'on':''}" onclick="window._b2bFilter='new';navTo('hq-b2b-orders')">New <span class="nb">${B2B_ORDERS.filter(o=>o.status==='new').length}</span></button>
+  <button class="${filter==='process'?'on':''}" onclick="window._b2bFilter='process';navTo('hq-b2b-orders')">Processing</button>
+  <button class="${filter==='done'?'on':''}" onclick="window._b2bFilter='done';navTo('hq-b2b-orders')">Completed</button>
 </div>
 <div class="card">
   <div class="tbl-wrap"><table>
@@ -1890,17 +1890,17 @@ function pageHqB2bOrders(){
         <td style="font-weight:700">${o.id}<br>${o.note?`<span style="font-size:11px;color:var(--orange)">${o.note}</span>`:''}</td>
         <td>${o.branch}</td>
         <td>${o.date}</td>
-        <td>${o.items.length} item</td>
+        <td>${o.items.length} items</td>
         <td style="font-weight:700;font-family:Sora">${fmtRM(orderTotal(o.items))}</td>
         <td>${statusPill(o.status)}</td>
         <td>
           <div style="display:flex;gap:6px">
             <button class="btn btn-ghost btn-xs" onclick="viewB2bOrder('${o.id}')">View</button>
-            ${o.status==='new'?`<button class="btn btn-primary btn-xs" onclick="updateB2bStatus('${o.id}','process')">Proses</button>`:''}
-            ${o.status==='process'?`<button class="btn btn-green btn-xs" onclick="updateB2bStatus('${o.id}','done')">Selesai</button>`:''}
+            ${o.status==='new'?`<button class="btn btn-primary btn-xs" onclick="updateB2bStatus('${o.id}','process')">Process</button>`:''}
+            ${o.status==='process'?`<button class="btn btn-green btn-xs" onclick="updateB2bStatus('${o.id}','done')">Complete</button>`:''}
           </div>
         </td>
-      </tr>`).join(''):`<tr><td colspan="7" class="empty-state">Tiada order</td></tr>`}
+      </tr>`).join(''):`<tr><td colspan="7" class="empty-state">No orders</td></tr>`}
     </tbody>
   </table></div>
 </div>`;
@@ -1910,21 +1910,21 @@ function viewB2bOrder(id){
   const o=B2B_ORDERS.find(x=>x.id===id);if(!o)return;
   openDlg(`<h3>📋 ${o.id}</h3>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;font-size:13px">
-  <div><b>Branch:</b> ${o.branch}</div><div><b>Tarikh:</b> ${o.date}</div>
-  <div><b>Status:</b> ${statusPill(o.status)}</div><div><b>Nota:</b> ${o.note||'-'}</div>
+  <div><b>Branch:</b> ${o.branch}</div><div><b>Date:</b> ${o.date}</div>
+  <div><b>Status:</b> ${statusPill(o.status)}</div><div><b>Note:</b> ${o.note||'-'}</div>
 </div>
-<table><thead><tr><th>Produk</th><th>Qty</th><th>Harga</th><th>Subtotal</th></tr></thead>
+<table><thead><tr><th>Product</th><th>Qty</th><th>Price</th><th>Subtotal</th></tr></thead>
 <tbody>${o.items.map(i=>`<tr>
   <td>${pname(i.pid)}</td>
   <td>${i.qty}</td><td>${fmtRM(i.price)}</td>
   <td style="font-weight:600">${fmtRM(i.qty*i.price)}</td>
 </tr>`).join('')}
-<tr style="background:var(--sand)"><td colspan="3" style="font-weight:700;text-align:right">JUMLAH</td><td style="font-weight:700;font-family:Sora;color:var(--navy)">${fmtRM(orderTotal(o.items))}</td></tr>
+<tr style="background:var(--sand)"><td colspan="3" style="font-weight:700;text-align:right">TOTAL</td><td style="font-weight:700;font-family:Sora;color:var(--navy)">${fmtRM(orderTotal(o.items))}</td></tr>
 </tbody></table>
 <div class="dlg-footer">
-  <button class="btn btn-ghost" onclick="closeDlg()">Tutup</button>
-  ${o.status==='new'?`<button class="btn btn-primary" onclick="updateB2bStatus('${id}','process');closeDlg()">Proses Order</button>`:''}
-  ${o.status==='process'?`<button class="btn btn-green" onclick="updateB2bStatus('${id}','done');closeDlg()">Tandakan Selesai</button>`:''}
+  <button class="btn btn-ghost" onclick="closeDlg()">Close</button>
+  ${o.status==='new'?`<button class="btn btn-primary" onclick="updateB2bStatus('${id}','process');closeDlg()">Process Order</button>`:''}
+  ${o.status==='process'?`<button class="btn btn-green" onclick="updateB2bStatus('${id}','done');closeDlg()">Mark Completed</button>`:''}
 </div>`,true);
 }
 
@@ -1949,7 +1949,7 @@ function showB2bFEFODialog(o){
   const blocks=o.items.map(i=>{
     const pr=PRODUCTS.find(x=>x.id===i.pid);
     const alloc=allocateFEFO(i.pid,i.qty);
-    if(!alloc)return`<div style="background:var(--red-l);border-radius:var(--radius-sm);padding:12px;margin-bottom:10px;color:var(--red)">⚠️ <strong>${pr?pr.name:i.pid}</strong>: Stok batch tidak mencukupi</div>`;
+    if(!alloc)return`<div style="background:var(--red-l);border-radius:var(--radius-sm);padding:12px;margin-bottom:10px;color:var(--red)">⚠️ <strong>${pr?pr.name:i.pid}</strong>: Insufficient batch stock</div>`;
     alloc.forEach(a=>{window._pickAllocs[a.batchId]={...a,pid:i.pid};});
     return alloc.map(a=>{
       const code=batchCode({pid:i.pid,batchNo:a.batchNo});
@@ -1958,25 +1958,25 @@ function showB2bFEFODialog(o){
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;flex-wrap:wrap;gap:6px">
           <div>
             <span style="font-weight:600">${pr?pr.name:i.pid}</span>
-            <span style="font-size:12px;color:var(--grey);margin-left:8px">Ambil <strong>${a.take}</strong> unit dari
+            <span style="font-size:12px;color:var(--grey);margin-left:8px">Take <strong>${a.take}</strong> units from
               <code style="background:var(--paper);padding:2px 6px;border-radius:4px">${code}</code>
-              — luput <strong style="color:${exCol}">${a.expiry}</strong>
+              — expires <strong style="color:${exCol}">${a.expiry}</strong>
             </span>
           </div>
-          <div id="pick-status-${a.batchId}"><span style="font-size:12px;color:var(--grey)">⬜ Belum disahkan</span></div>
+          <div id="pick-status-${a.batchId}"><span style="font-size:12px;color:var(--grey)">⬜ Not confirmed</span></div>
         </div>
         ${scanInput('pick-scan-'+a.batchId,'Scan '+code,'onScanPick("'+a.batchId+'",scanVal)')}
-        ${DEMO_MODE?`<button class="btn btn-ghost btn-xs" style="font-size:11px;margin-top:2px" onclick="onScanPick('${a.batchId}','${code}')">Guna kod cadangan</button>`:''}
+        ${DEMO_MODE?`<button class="btn btn-ghost btn-xs" style="font-size:11px;margin-top:2px" onclick="onScanPick('${a.batchId}','${code}')">Use suggested code</button>`:''}
       </div>`;
     }).join('');
   }).join('');
 
-  openDlg(`<h3>📦 Pengesahan FEFO — ${o.id}</h3>
-<p style="color:var(--grey);margin-bottom:14px">Scan kod batch dari setiap kotak untuk mengesahkan pengambilan stok.</p>
+  openDlg(`<h3>📦 FEFO Confirmation — ${o.id}</h3>
+<p style="color:var(--grey);margin-bottom:14px">Scan the batch code from each box to confirm stock picking.</p>
 ${blocks}
 <div class="dlg-footer">
-  <button class="btn btn-ghost" onclick="closeDlg()">Batal</button>
-  <button class="btn btn-primary" id="pick-process-btn" disabled onclick="confirmB2bProcess('${o.id}')">Proses Order</button>
+  <button class="btn btn-ghost" onclick="closeDlg()">Cancel</button>
+  <button class="btn btn-primary" id="pick-process-btn" disabled onclick="confirmB2bProcess('${o.id}')">Process Order</button>
 </div>`,true);
 
   const firstPid=o.items[0]?.pid;
@@ -1992,19 +1992,19 @@ function onScanPick(batchId,code){
 
   if(!scanned){
     logScan('pick',code,alloc.pid,'','notfound',orderId);
-    toast('❌ Kod batch tidak dikenali');
+    toast('❌ Batch code not recognized');
     return;
   }
   if(expiryStatus(scanned.expiry)==='expired'){
     logScan('pick',code,scanned.pid,scanned.batchNo,'expired',orderId);
-    if(stEl)stEl.innerHTML=`<div style="color:var(--red);font-size:12px">⛔ Batch ini telah luput pada ${scanned.expiry}</div>`;
+    if(stEl)stEl.innerHTML=`<div style="color:var(--red);font-size:12px">⛔ This batch expired on ${scanned.expiry}</div>`;
     return;
   }
   if(scanned.id===batchId){
     logScan('pick',code,scanned.pid,scanned.batchNo,'ok',orderId);
     window._pickConfirmed[batchId]=true;
-    if(stEl)stEl.innerHTML=`<div style="color:var(--green);font-size:12px;font-weight:600">✅ Batch disahkan</div>`;
-    toast('✅ Batch disahkan');
+    if(stEl)stEl.innerHTML=`<div style="color:var(--green);font-size:12px;font-weight:600">✅ Batch confirmed</div>`;
+    toast('✅ Batch confirmed');
     checkAllPickConfirmed();
     return;
   }
@@ -2013,17 +2013,17 @@ function onScanPick(batchId,code){
       logScan('pick',code,scanned.pid,scanned.batchNo,'earlier',orderId);
       window._pickConfirmed[batchId]=true;
       window._pickAllocs[batchId]={...alloc,batchId:scanned.id,batchNo:scanned.batchNo,expiry:scanned.expiry};
-      if(stEl)stEl.innerHTML=`<div style="color:var(--orange);font-size:12px">⚠️ Batch ini luput lebih awal dari cadangan. Diterima.</div>`;
+      if(stEl)stEl.innerHTML=`<div style="color:var(--orange);font-size:12px">⚠️ This batch expires earlier than suggested. Accepted.</div>`;
       checkAllPickConfirmed();
     } else {
       logScan('pick',code,scanned.pid,scanned.batchNo,'blocked',orderId);
       const exp=BATCHES.find(x=>x.id===batchId);
-      if(stEl)stEl.innerHTML=`<div style="color:var(--red);font-size:12px">⛔ Salah batch. Batch ini luput ${scanned.expiry}. Sila ambil <code style="background:var(--sand);padding:1px 5px">${exp?batchCode(exp):'batch betul'}</code> yang luput ${alloc.expiry} dahulu.</div>`;
+      if(stEl)stEl.innerHTML=`<div style="color:var(--red);font-size:12px">⛔ Wrong batch. This batch expires ${scanned.expiry}. Please take <code style="background:var(--sand);padding:1px 5px">${exp?batchCode(exp):'correct batch'}</code> expiring ${alloc.expiry} first.</div>`;
     }
     return;
   }
   logScan('pick',code,scanned.pid,scanned.batchNo,'notfound',orderId);
-  toast('❌ Kod batch tidak dikenali');
+  toast('❌ Batch code not recognized');
 }
 
 function checkAllPickConfirmed(){
@@ -2050,7 +2050,7 @@ async function processB2bFEFO(o,confirmedAllocs){
   }else{
     for(const i of o.items){
       const alloc=allocateFEFO(i.pid,i.qty);
-      if(!alloc){toast('❌ Stok batch tidak mencukupi untuk '+i.pid);return;}
+      if(!alloc){toast('❌ Insufficient batch stock for '+i.pid);return;}
       for(const a of alloc){const b=BATCHES.find(x=>x.id===a.batchId);if(b)b.qty-=a.take;}
       const p=PRODUCTS.find(x=>x.id===i.pid);
       if(p)p.stock=totalStock(i.pid);
@@ -2060,7 +2060,7 @@ async function processB2bFEFO(o,confirmedAllocs){
   await Promise.all([saveB2BOrders(),saveProducts(),saveBatches()]);
   buildSidebar();
   navTo('hq-b2b-orders');
-  toast(`✓ Order ${o.id} selesai — stok FEFO dikemaskini`);
+  toast(`✓ Order ${o.id} completed — FEFO stock updated`);
 }
 
 function pageHqCatalog(){
@@ -3155,16 +3155,16 @@ function hqConfirmPO(poId){
 function pageHqB2cOrders(){
   let filter=window._b2cFilter||'all';
   const shown=filter==='all'?B2C_ORDERS:B2C_ORDERS.filter(o=>o.status===filter);
-  return `<div class="page-head"><h2>🛒 Order B2C dari Pelanggan</h2><p>Proses dan hantar order dari pelanggan runcit</p></div>
+  return `<div class="page-head"><h2>🛒 B2C Orders from Customers</h2><p>Process and ship orders from retail customers</p></div>
 <div class="tabs">
-  <button class="${filter==='all'?'on':''}" onclick="window._b2cFilter='all';navTo('hq-b2c-orders')">Semua</button>
-  <button class="${filter==='new'?'on':''}" onclick="window._b2cFilter='new';navTo('hq-b2c-orders')">Baru <span class="nb">${B2C_ORDERS.filter(o=>o.status==='new').length}</span></button>
-  <button class="${filter==='process'?'on':''}" onclick="window._b2cFilter='process';navTo('hq-b2c-orders')">Diproses</button>
-  <button class="${filter==='done'?'on':''}" onclick="window._b2cFilter='done';navTo('hq-b2c-orders')">Selesai</button>
+  <button class="${filter==='all'?'on':''}" onclick="window._b2cFilter='all';navTo('hq-b2c-orders')">All</button>
+  <button class="${filter==='new'?'on':''}" onclick="window._b2cFilter='new';navTo('hq-b2c-orders')">New <span class="nb">${B2C_ORDERS.filter(o=>o.status==='new').length}</span></button>
+  <button class="${filter==='process'?'on':''}" onclick="window._b2cFilter='process';navTo('hq-b2c-orders')">Processing</button>
+  <button class="${filter==='done'?'on':''}" onclick="window._b2cFilter='done';navTo('hq-b2c-orders')">Completed</button>
 </div>
 <div class="card">
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Order No.</th><th>Customer</th><th>Alamat Hantar</th><th>Date</th><th>Total</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>Order No.</th><th>Customer</th><th>Ship Address</th><th>Date</th><th>Total</th><th>Status</th><th></th></tr></thead>
     <tbody>
       ${shown.map(o=>`<tr>
         <td style="font-weight:700">${o.id}</td>
@@ -3175,8 +3175,8 @@ function pageHqB2cOrders(){
         <td>${statusPill(o.status)}</td>
         <td><div style="display:flex;gap:6px">
           <button class="btn btn-ghost btn-xs" onclick="viewB2cOrder('${o.id}')">View</button>
-          ${o.status==='new'?`<button class="btn btn-primary btn-xs" onclick="updateB2cStatus('${o.id}','process')">Proses</button>`:''}
-          ${o.status==='process'?`<button class="btn btn-green btn-xs" onclick="updateB2cStatus('${o.id}','done')">Hantar</button>`:''}
+          ${o.status==='new'?`<button class="btn btn-primary btn-xs" onclick="updateB2cStatus('${o.id}','process')">Process</button>`:''}
+          ${o.status==='process'?`<button class="btn btn-green btn-xs" onclick="updateB2cStatus('${o.id}','done')">Ship</button>`:''}
         </div></td>
       </tr>`).join('')}
     </tbody>
@@ -3188,29 +3188,29 @@ function viewB2cOrder(id){
   const o=B2C_ORDERS.find(x=>x.id===id);if(!o)return;
   openDlg(`<h3>🛒 ${o.id}</h3>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;font-size:13px">
-  <div><b>Pelanggan:</b> ${o.customer}</div><div><b>Email:</b> ${o.email}</div>
-  <div><b>Tarikh:</b> ${o.date}</div><div><b>Status:</b> ${statusPill(o.status)}</div>
-  <div class="form-row" style="grid-column:span 2"><div><b>Alamat:</b> ${o.addr}</div></div>
+  <div><b>Customer:</b> ${o.customer}</div><div><b>Email:</b> ${o.email}</div>
+  <div><b>Date:</b> ${o.date}</div><div><b>Status:</b> ${statusPill(o.status)}</div>
+  <div class="form-row" style="grid-column:span 2"><div><b>Address:</b> ${o.addr}</div></div>
 </div>
-<table><thead><tr><th>Produk</th><th>Qty</th><th>Harga B2C</th><th>Subtotal</th></tr></thead>
+<table><thead><tr><th>Product</th><th>Qty</th><th>B2C Price</th><th>Subtotal</th></tr></thead>
 <tbody>${o.items.map(i=>`<tr>
   <td>${pname(i.pid)}</td>
   <td>${i.qty}</td><td>${fmtRM(i.price)}</td>
   <td style="font-weight:600">${fmtRM(i.qty*i.price)}</td>
 </tr>`).join('')}
-<tr style="background:var(--sand)"><td colspan="3" style="font-weight:700;text-align:right">JUMLAH</td><td style="font-weight:700;color:var(--navy)">${fmtRM(orderTotal(o.items))}</td></tr>
+<tr style="background:var(--sand)"><td colspan="3" style="font-weight:700;text-align:right">TOTAL</td><td style="font-weight:700;color:var(--navy)">${fmtRM(orderTotal(o.items))}</td></tr>
 </tbody></table>
 <div class="dlg-footer">
-  <button class="btn btn-ghost" onclick="closeDlg()">Tutup</button>
-  ${o.status==='new'?`<button class="btn btn-primary" onclick="updateB2cStatus('${id}','process');closeDlg()">Proses</button>`:''}
-  ${o.status==='process'?`<button class="btn btn-green" onclick="updateB2cStatus('${id}','done');closeDlg()">Tandakan Dihantar</button>`:''}
+  <button class="btn btn-ghost" onclick="closeDlg()">Close</button>
+  ${o.status==='new'?`<button class="btn btn-primary" onclick="updateB2cStatus('${id}','process');closeDlg()">Process</button>`:''}
+  ${o.status==='process'?`<button class="btn btn-green" onclick="updateB2cStatus('${id}','done');closeDlg()">Mark Shipped</button>`:''}
 </div>`,true);
 }
 
 async function updateB2cStatus(id,status){
   const o=B2C_ORDERS.find(x=>x.id===id);if(!o)return;
   o.status=status;await saveB2COrders();buildSidebar();navTo('hq-b2c-orders');
-  toast(`✓ Order ${id} → ${status==='process'?'Diproses':'Dihantar'}`);
+  toast(`✓ Order ${id} → ${status==='process'?'Processing':'Shipped'}`);
 }
 
 function pageHqAnalytics(){
