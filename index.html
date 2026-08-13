@@ -1468,6 +1468,11 @@ function pageHqDashboard(){
   const b2cRev=B2C_ORDERS.filter(o=>o.status==='done').reduce((s,o)=>s+orderTotal(o.items),0);
   const lowStock=PRODUCTS.filter(p=>p.stock<100).length;
   const criticalBatches=BATCHES.filter(b=>['expired','critical'].includes(expiryStatus(b.expiry))).length;
+  // Backorder demand: aggregate qty per product from all un-released bo items
+  const boDemand={};
+  B2B_ORDERS.forEach(o=>o.items.forEach(i=>{ if(i.bo && !i.released){ boDemand[i.pid]=(boDemand[i.pid]||0)+i.qty; } }));
+  const boList=Object.entries(boDemand);
+  const clinicsWaiting=pid=>B2B_ORDERS.filter(o=>o.items.some(i=>i.pid===pid&&i.bo&&!i.released)).length;
   return `<div class="page-head"><h2>🏢 HQ Dashboard</h2><p>${SESSION.org} — Operations overview</p></div>
 <div class="kpis">
   <div class="kpi kn"><div class="lbl">New B2B Orders</div><div class="val">${b2bNew}</div><div class="sub">Awaiting approval</div></div>
@@ -1482,6 +1487,20 @@ ${lowStock>0?`<div style="background:var(--orange-l);border:1px solid var(--oran
 ${criticalBatches>0?`<div style="background:var(--red-l);border:1px solid var(--red);border-radius:var(--radius);padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:12px">
   <span style="font-size:20px">🗓️</span>
   <div><strong>${criticalBatches} batches</strong> critical or expired. <a href="#" onclick="navTo('hq-batches')">Check Batch & Expiry →</a></div>
+</div>`:''}
+${boList.length?`<div class="card" style="background:var(--orange-l);border:1px solid var(--orange);margin-bottom:18px">
+  <div class="card-h"><h3>📦 Reorder Needed (Backorder Demand)</h3><button class="btn btn-ghost btn-xs" onclick="window._b2bFilter='backorder';navTo('hq-b2b-orders')">View Backorders</button></div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Product</th><th>Total Qty Demanded</th><th>Current Stock</th><th>Clinics Waiting</th></tr></thead>
+    <tbody>
+      ${boList.map(([pid,qty])=>{const cur=totalStock(pid);return `<tr>
+        <td style="font-weight:600">${pname(pid)}</td>
+        <td style="font-weight:700;color:var(--orange)">${qty}</td>
+        <td><span class="pill ${cur<=0?'p-cancel':cur<qty?'p-new':'p-done'}">${cur}</span></td>
+        <td>${clinicsWaiting(pid)}</td>
+      </tr>`;}).join('')}
+    </tbody>
+  </table></div>
 </div>`:''}
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
   <div class="card">
@@ -1867,7 +1886,7 @@ async function applyStocktake(stId){
 // STEP 4: HQ B2B Orders, Catalog, Suppliers, PO, GRN
 // ============================================================
 function statusPill(s){
-  const map={new:'p-new New',process:'p-process Processing',done:'p-done Completed',cancel:'p-cancel Cancelled',pending:'p-pending Not Sent',confirmed:'p-process Awaiting Goods',partial:'p-new Partial Receipt',delivered:'p-done Completed'};
+  const map={new:'p-new New',process:'p-process Processing',done:'p-done Completed',cancel:'p-cancel Cancelled',pending:'p-pending Not Sent',confirmed:'p-process Awaiting Goods',partial:'p-new Partial Receipt',delivered:'p-done Completed',backorder:'p-pending Backorder'};
   const [cls,lbl]=(map[s]||'p-pending '+s).split(' ');
   return `<span class="pill ${cls}">${lbl}</span>`;
 }
@@ -1879,6 +1898,7 @@ function pageHqB2bOrders(){
 <div class="tabs">
   <button class="${filter==='all'?'on':''}" onclick="window._b2bFilter='all';navTo('hq-b2b-orders')">All <span class="nb">${B2B_ORDERS.length}</span></button>
   <button class="${filter==='new'?'on':''}" onclick="window._b2bFilter='new';navTo('hq-b2b-orders')">New <span class="nb">${B2B_ORDERS.filter(o=>o.status==='new').length}</span></button>
+  <button class="${filter==='backorder'?'on':''}" onclick="window._b2bFilter='backorder';navTo('hq-b2b-orders')">Backorder <span class="nb">${B2B_ORDERS.filter(o=>o.status==='backorder').length}</span></button>
   <button class="${filter==='process'?'on':''}" onclick="window._b2bFilter='process';navTo('hq-b2b-orders')">Processing</button>
   <button class="${filter==='done'?'on':''}" onclick="window._b2bFilter='done';navTo('hq-b2b-orders')">Completed</button>
 </div>
@@ -1914,11 +1934,20 @@ function viewB2bOrder(id){
   <div><b>Status:</b> ${statusPill(o.status)}</div><div><b>Note:</b> ${o.note||'-'}</div>
 </div>
 <table><thead><tr><th>Product</th><th>Qty</th><th>Price</th><th>Subtotal</th></tr></thead>
-<tbody>${o.items.map(i=>`<tr>
-  <td>${pname(i.pid)}</td>
+<tbody>${o.items.map(i=>{
+  const boBadge=i.bo?` <span class="pill p-pending" style="font-size:10px">Backorder</span>`:'';
+  let releaseBtn='';
+  if(o.status==='backorder'&&i.bo&&!i.released){
+    const canRelease=totalStock(i.pid)>=i.qty;
+    releaseBtn=canRelease
+      ?` <button class="btn btn-primary btn-xs" style="margin-left:6px" onclick="releaseBackorderItem('${id}','${i.pid}')">Release</button>`
+      :` <button class="btn btn-ghost btn-xs" style="margin-left:6px" disabled title="Insufficient stock — reorder first">Release</button>`;
+  }
+  return `<tr>
+  <td>${pname(i.pid)}${boBadge}${releaseBtn}</td>
   <td>${i.qty}</td><td>${fmtRM(i.price)}</td>
   <td style="font-weight:600">${fmtRM(i.qty*i.price)}</td>
-</tr>`).join('')}
+</tr>`;}).join('')}
 <tr style="background:var(--sand)"><td colspan="3" style="font-weight:700;text-align:right">TOTAL</td><td style="font-weight:700;font-family:Sora;color:var(--navy)">${fmtRM(orderTotal(o.items))}</td></tr>
 </tbody></table>
 <div class="dlg-footer">
@@ -1926,6 +1955,17 @@ function viewB2bOrder(id){
   ${o.status==='new'?`<button class="btn btn-primary" onclick="updateB2bStatus('${id}','process');closeDlg()">Process Order</button>`:''}
   ${o.status==='process'?`<button class="btn btn-green" onclick="updateB2bStatus('${id}','done');closeDlg()">Mark Completed</button>`:''}
 </div>`,true);
+}
+
+async function releaseBackorderItem(orderId,pid){
+  const o=B2B_ORDERS.find(x=>x.id===orderId);if(!o)return;
+  const it=o.items.find(i=>i.pid===pid&&i.bo&&!i.released);if(!it)return;
+  if(totalStock(pid)<it.qty){toast('❌ Insufficient stock — reorder first');return;}
+  it.released=true; it.bo=false;
+  // jika semua item backorder dah released, tukar status ke 'new'
+  if(!o.items.some(i=>i.bo)){o.status='new';o.hasBackorder=false;}
+  await saveB2BOrders();navTo('hq-b2b-orders');
+  toast('✓ '+pname(pid)+' released — ready to process');
 }
 
 async function updateB2bStatus(id,status){
@@ -2039,6 +2079,7 @@ async function confirmB2bProcess(id){
 }
 
 async function processB2bFEFO(o,confirmedAllocs){
+  if(o.status==='backorder'){toast('❌ Order has backordered items — release them first');return;}
   if(confirmedAllocs&&Object.keys(confirmedAllocs).length){
     for(const bid of Object.keys(confirmedAllocs)){
       const a=confirmedAllocs[bid];
@@ -3437,14 +3478,30 @@ async function setB2bCart(pid,val){
 async function checkoutB2b(){
   const items=Object.entries(B2B_CART).map(([pid,qty])=>{
     const p=PRODUCTS.find(x=>x.id===pid);
-    return p?{pid,qty,price:p.b2bPrice}:null;
+    if(!p)return null;
+    const stock=totalStock(pid);
+    return {pid,qty,price:p.b2bPrice,bo:(stock<qty)};
   }).filter(Boolean);
   if(!items.length){toast('❌ Cart is empty');return;}
-  const o={id:uid('B2B'),branch:SESSION.org,date:today(),status:'new',items,note:''};
+  const boItems=items.filter(i=>i.bo);
+  if(boItems.length){
+    showConfirm('Some Items Out of Stock',
+      boItems.map(i=>'• '+pname(i.pid)+' (qty '+i.qty+')').join('\n')+
+      '\n\nThese items are out of stock and will be BACKORDERED. HQ will reorder from supplier. Continue?',
+      'Yes, Place Order',()=>doCheckoutB2b(items));
+  }else{
+    doCheckoutB2b(items);
+  }
+}
+
+async function doCheckoutB2b(items){
+  const hasBo=items.some(i=>i.bo);
+  const o={id:uid('B2B'),branch:SESSION.org,date:today(),
+    status: hasBo?'backorder':'new', hasBackorder:hasBo, items,note:''};
   B2B_ORDERS.push(o);B2B_CART={};
   await Promise.all([saveB2BOrders(),saveB2BCart()]);
   buildSidebar();navTo('b2b-myorders');
-  toast('✓ Order '+o.id+' sent to HQ!');
+  toast(hasBo?'✓ Order '+o.id+' placed (some items backordered)':'✓ Order '+o.id+' sent to HQ!');
 }
 
 function pageB2bMyOrders(){
@@ -3458,7 +3515,7 @@ function pageB2bMyOrders(){
         <td style="font-weight:700">${o.id}</td><td>${o.date}</td>
         <td>${o.items.length} items</td>
         <td style="font-weight:600">${fmtRM(orderTotal(o.items))}</td>
-        <td>${statusPill(o.status)}</td>
+        <td>${statusPill(o.status)}${o.hasBackorder?` <span class="pill p-pending" style="font-size:10px" title="Contains backordered items">BO</span>`:''}</td>
         <td><button class="btn btn-ghost btn-xs" onclick="viewB2bOrder('${o.id}')">View</button></td>
       </tr>`).join(''):`<tr><td colspan="6"><div class="empty-state" style="padding:40px"><div class="empty-icon">📋</div><h4>No orders yet</h4><p>Create your first order!</p></div></td></tr>`}
     </tbody>
