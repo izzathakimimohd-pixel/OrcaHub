@@ -1652,18 +1652,18 @@ function stValCell(sys,phys,cost){
 const ST_STATUS={draft:['p-new','Draft'],pending_review:['p-process','Review'],applied:['p-done','Completed']};
 
 function pageStocktake(){
-  const head=`<div class="page-head"><h2>📋 Stocktake</h2><p>Kiraan stok fizikal ikut batch</p></div>`;
+  const head=`<div class="page-head"><h2>📋 Stocktake</h2><p>Physical stock count by batch</p></div>`;
   if(window._stReview){
     const st=STOCKTAKES.find(x=>x.id===window._stReview);
     if(st) return head+renderStocktakeReview(st);
   }
   const list=[...STOCKTAKES].reverse();
   return head+`
-<div style="margin-bottom:16px"><button class="btn btn-primary" onclick="startStocktake()">+ Stocktake Baru</button></div>
+<div style="margin-bottom:16px"><button class="btn btn-primary" onclick="startStocktake()">+ New Stocktake</button></div>
 <div class="card">
-  <div class="card-h"><h3>Sejarah Stocktake</h3><span style="font-size:12px;color:var(--grey)">${STOCKTAKES.length} rekod</span></div>
+  <div class="card-h"><h3>Stocktake History</h3><span style="font-size:12px;color:var(--grey)">${STOCKTAKES.length} records</span></div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Date</th><th>Bil Batch</th><th>Bil Selisih</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>Date</th><th>Batches</th><th>Variances</th><th>Status</th><th></th></tr></thead>
     <tbody>
       ${list.length?list.map(st=>{
         const varc=st.lines.filter(l=>l.physQty!=null&&l.physQty!==l.sysQty).length;
@@ -1678,7 +1678,7 @@ function pageStocktake(){
           <td><span class="pill ${sm[0]}">${sm[1]}</span></td>
           <td><div style="display:flex;gap:6px"><button class="btn btn-ghost btn-xs" onclick="${act}">View</button><button class="btn btn-ghost btn-xs" onclick="printStocktakeReport('${st.id}')">Print</button></div></td>
         </tr>`;
-      }).join(''):`<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">📋</div><h4>Tiada stocktake</h4><p>Tekan "+ Stocktake Baru" untuk mula kiraan fizikal</p></div></td></tr>`}
+      }).join(''):`<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">📋</div><h4>No stocktake</h4><p>Click "+ New Stocktake" to start physical count</p></div></td></tr>`}
     </tbody>
   </table></div>
 </div>`;
@@ -1695,26 +1695,26 @@ function renderStocktakeReview(st){
   const overVal=valued.reduce((s,l)=>{const d=lineVal(l);return s+(d>0?d:0);},0);
   const netCol=netVal===0?'var(--green)':netVal<0?'var(--red)':'var(--orange)';
   return `
-<div style="margin-bottom:14px"><button class="btn btn-ghost btn-sm" onclick="window._stReview=null;navTo('hq-stocktake')">← Kembali ke Senarai</button></div>
+<div style="margin-bottom:14px"><button class="btn btn-ghost btn-sm" onclick="window._stReview=null;navTo('hq-stocktake')">← Back to List</button></div>
 <div class="kpis">
-  <div class="kpi kn"><div class="lbl">Tarikh</div><div class="val" style="font-size:20px">${st.date}</div><div class="sub">Oleh ${st.by||'—'}</div></div>
-  <div class="kpi ko"><div class="lbl">Bil Batch Dikira</div><div class="val">${counted}/${st.lines.length}</div></div>
-  <div class="kpi kr"><div class="lbl">Bil Selisih</div><div class="val">${varLines.length}</div></div>
-  <div class="kpi kp"><div class="lbl">Status</div><div class="val" style="font-size:18px">${(ST_STATUS[st.status]||['',st.status])[1]}</div>${st.appliedAt?`<div class="sub">${new Date(st.appliedAt).toLocaleString('ms-MY')}</div>`:''}</div>
-  <div class="kpi kn"><div class="lbl">Nilai Selisih Bersih</div><div class="val" style="color:${netCol}">${fmtRM(netVal)}</div><div class="sub">Kos belian (supplier price)</div></div>
-  <div class="kpi kr"><div class="lbl">Nilai Kurang</div><div class="val" style="color:var(--red)">${fmtRM(shortVal)}</div><div class="sub">Kerugian pada kos</div></div>
-  <div class="kpi ko"><div class="lbl">Nilai Lebih</div><div class="val" style="color:var(--orange)">${fmtRM(overVal)}</div><div class="sub">Lebihan pada kos</div></div>
+  <div class="kpi kn"><div class="lbl">Date</div><div class="val" style="font-size:20px">${st.date}</div><div class="sub">By ${st.by||'—'}</div></div>
+  <div class="kpi ko"><div class="lbl">Batches Counted</div><div class="val">${counted}/${st.lines.length}</div></div>
+  <div class="kpi kr"><div class="lbl">Variances</div><div class="val">${varLines.length}</div></div>
+  <div class="kpi kp"><div class="lbl">Status</div><div class="val" style="font-size:18px">${(ST_STATUS[st.status]||['',st.status])[1]}</div>${st.appliedAt?`<div class="sub">${new Date(st.appliedAt).toLocaleString('en-MY')}</div>`:''}</div>
+  <div class="kpi kn"><div class="lbl">Net Variance Value</div><div class="val" style="color:${netCol}">${fmtRM(netVal)}</div><div class="sub">At cost (supplier price)</div></div>
+  <div class="kpi kr"><div class="lbl">Shortage Value</div><div class="val" style="color:var(--red)">${fmtRM(shortVal)}</div><div class="sub">Loss at cost</div></div>
+  <div class="kpi ko"><div class="lbl">Overage Value</div><div class="val" style="color:var(--orange)">${fmtRM(overVal)}</div><div class="sub">Excess at cost</div></div>
 </div>
 <div class="card">
-  <div class="card-h"><h3>Semakan Selisih</h3>
+  <div class="card-h"><h3>Variance Review</h3>
     <div style="display:flex;align-items:center;gap:8px">
       <button class="btn btn-ghost btn-sm" onclick="printStocktakeReport('${st.id}')">Print Report</button>
-      ${st.status==='pending_review'&&varLines.length?`<button class="btn btn-primary btn-sm" onclick="applyStocktake('${st.id}')">Apply Semua Adjustment</button>`:''}
-      ${st.status==='applied'?`<span class="pill p-done">Telah Diterapkan oleh ${st.appliedBy||'—'}</span>`:''}
+      ${st.status==='pending_review'&&varLines.length?`<button class="btn btn-primary btn-sm" onclick="applyStocktake('${st.id}')">Apply All Adjustments</button>`:''}
+      ${st.status==='applied'?`<span class="pill p-done">Applied by ${st.appliedBy||'—'}</span>`:''}
     </div>
   </div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Produk</th><th>Batch</th><th>Expiry</th><th>Qty Sistem</th><th>Qty Fizikal</th><th>Selisih</th><th>Nilai Selisih (RM)</th></tr></thead>
+    <thead><tr><th>Product</th><th>Batch</th><th>Expiry</th><th>System Qty</th><th>Physical Qty</th><th>Variance</th><th>Variance Value (RM)</th></tr></thead>
     <tbody>
       ${st.lines.map(l=>{
         const pr=PRODUCTS.find(p=>p.id===l.pid);const nm=pr?(pr.name||pr.desc||l.pid):l.pid;
@@ -1750,27 +1750,27 @@ async function startStocktake(){
 
 function pageStocktakeCount(){
   const st=STOCKTAKES.find(x=>x.id===window._stId);
-  const head=`<div class="page-head"><h2>📋 Kiraan Stocktake</h2><p>Scan batch dan masukkan kuantiti fizikal</p></div>`;
-  if(!st) return head+`<div class="card"><div class="card-body"><div class="empty-state"><div class="empty-icon">📋</div><h4>Stocktake tidak dijumpai</h4><p><a href="#" onclick="navTo('hq-stocktake')">← Kembali ke Senarai</a></p></div></div></div>`;
+  const head=`<div class="page-head"><h2>📋 Stocktake Count</h2><p>Scan batch and enter physical quantity</p></div>`;
+  if(!st) return head+`<div class="card"><div class="card-body"><div class="empty-state"><div class="empty-icon">📋</div><h4>Stocktake not found</h4><p><a href="#" onclick="navTo('hq-stocktake')">← Back to List</a></p></div></div></div>`;
   const counted=st.lines.filter(l=>l.physQty!=null).length;
   const varc=st.lines.filter(l=>l.physQty!=null&&l.physQty!==l.sysQty).length;
   return head+`
-<div style="margin-bottom:14px"><button class="btn btn-ghost btn-sm" onclick="navTo('hq-stocktake')">← Kembali ke Senarai</button></div>
+<div style="margin-bottom:14px"><button class="btn btn-ghost btn-sm" onclick="navTo('hq-stocktake')">← Back to List</button></div>
 <div class="card">
-  <div class="card-h"><h3>Scan Batch</h3><span style="font-size:12px;color:var(--grey)">Tarikh: ${st.date}</span></div>
+  <div class="card-h"><h3>Scan Batch</h3><span style="font-size:12px;color:var(--grey)">Date: ${st.date}</span></div>
   <div class="card-body">
-    ${scanInput('stScan','Scan/taip kod batch...','stScanBatch(scanVal)')}
+    ${scanInput('stScan','Scan/type batch code...','stScanBatch(scanVal)')}
   </div>
 </div>
 <div class="card">
-  <div class="card-h"><h3>Kiraan Batch (${st.lines.length})</h3>
+  <div class="card-h"><h3>Batch Count (${st.lines.length})</h3>
     <div style="display:flex;align-items:center;gap:12px">
-      <div style="font-size:12px;color:var(--grey)">Dikira: <b id="stSumCounted">${counted}</b>/${st.lines.length} · Selisih: <b id="stSumVariance" style="color:var(--orange)">${varc}</b> · <span style="font-style:italic">Nilai pada kos belian (supplier price)</span></div>
+      <div style="font-size:12px;color:var(--grey)">Counted: <b id="stSumCounted">${counted}</b>/${st.lines.length} · Variances: <b id="stSumVariance" style="color:var(--orange)">${varc}</b> · <span style="font-style:italic">Value at cost (supplier price)</span></div>
       <button class="btn btn-ghost btn-sm" onclick="printStocktakeCountSheet('${st.id}')">Print Count Sheet</button>
     </div>
   </div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Produk</th><th>Batch</th><th>Expiry</th><th>Qty Sistem</th><th>Qty Fizikal</th><th>Selisih</th><th>Nilai Selisih (RM)</th></tr></thead>
+    <thead><tr><th>Product</th><th>Batch</th><th>Expiry</th><th>System Qty</th><th>Physical Qty</th><th>Variance</th><th>Variance Value (RM)</th></tr></thead>
     <tbody>
       ${st.lines.map(l=>{
         const pr=PRODUCTS.find(p=>p.id===l.pid);const nm=pr?(pr.name||pr.desc||l.pid):l.pid;
@@ -1789,8 +1789,8 @@ function pageStocktakeCount(){
     </tbody>
   </table></div>
   <div class="card-body" style="display:flex;gap:10px;border-top:1px solid var(--line)">
-    <button class="btn btn-ghost" onclick="stSaveDraft()">Simpan Draf</button>
-    <button class="btn btn-primary" onclick="finishStocktake()">Selesai & Semak</button>
+    <button class="btn btn-ghost" onclick="stSaveDraft()">Save Draft</button>
+    <button class="btn btn-primary" onclick="finishStocktake()">Finish & Review</button>
     <button class="btn btn-ghost" onclick="printStocktakeCountSheet('${st.id}')">Print Count Sheet</button>
   </div>
 </div>`;
@@ -1806,9 +1806,9 @@ function stScanBatch(code){
     if(el){el.focus();if(el.select)el.select();}
     const row=document.getElementById('strow_'+ln.batchId);
     if(row)row.scrollIntoView({block:'center',behavior:'smooth'});
-    toast('✓ Batch '+ln.batchNo+' — masukkan qty fizikal');
+    toast('✓ Batch '+ln.batchNo+' — enter physical qty');
   }else{
-    toast('❌ Batch "'+code+'" tidak dijumpai');
+    toast('❌ Batch "'+code+'" not found');
   }
 }
 
@@ -1829,7 +1829,7 @@ function stSetPhys(batchId,val){
   if(vEl)vEl.textContent=st.lines.filter(l=>l.physQty!=null&&l.physQty!==l.sysQty).length;
 }
 
-async function stSaveDraft(){await saveStocktakes();toast('✓ Draf disimpan');}
+async function stSaveDraft(){await saveStocktakes();toast('✓ Draft saved');}
 
 async function finishStocktake(){
   const st=STOCKTAKES.find(x=>x.id===window._stId);
@@ -1843,7 +1843,7 @@ async function finishStocktake(){
 async function applyStocktake(stId){
   const st=STOCKTAKES.find(x=>x.id===stId);
   if(!st||st.status==='applied')return;
-  showConfirm('Apply Adjustment','Kemas kini qty batch ikut kiraan fizikal? Tindakan direkod.','Ya, Apply',async()=>{
+  showConfirm('Apply Adjustment','Update batch qty based on physical count? This action is recorded.','Yes, Apply',async()=>{
     for(const ln of st.lines){
       if(ln.physQty!=null && ln.physQty!==ln.sysQty){
         const b=BATCHES.find(x=>x.id===ln.batchId);
@@ -1859,7 +1859,7 @@ async function applyStocktake(stId){
     st.status='applied'; st.appliedBy=SESSION?.name||'';
     st.appliedAt=new Date().toISOString();
     await saveBatches(); await saveProducts(); await saveStocktakes();
-    navTo('hq-stocktake'); toast('✓ Adjustment diterapkan');
+    navTo('hq-stocktake'); toast('✓ Adjustment applied');
   });
 }
 
@@ -3221,20 +3221,20 @@ function pageHqAnalytics(){
   const totalRev=b2bRev+b2cRev;
   const catData={};
   [...B2B_ORDERS,...B2C_ORDERS].forEach(o=>o.items.forEach(i=>{
-    const cat=PRODUCTS.find(p=>p.id===i.pid)?.cat||'Lain';
+    const cat=PRODUCTS.find(p=>p.id===i.pid)?.cat||'Other';
     catData[cat]=(catData[cat]||0)+i.qty;
   }));
   const topCats=Object.entries(catData).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const maxCat=Math.max(...topCats.map(x=>x[1]));
-  return `<div class="page-head"><h2>📊 Analitik Jualan</h2><p>Prestasi B2B dan B2C syarikat</p></div>
+  return `<div class="page-head"><h2>📊 Sales Analytics</h2><p>Company B2B and B2C performance</p></div>
 <div class="kpis">
-  <div class="kpi kn"><div class="lbl">Jumlah Hasil</div><div class="val">${fmtRM(totalRev)}</div></div>
-  <div class="kpi ko"><div class="lbl">Hasil B2B</div><div class="val">${fmtRM(b2bRev)}</div><div class="sub">${((b2bRev/totalRev||0)*100).toFixed(0)}% daripada jumlah</div></div>
-  <div class="kpi kg"><div class="lbl">Hasil B2C</div><div class="val">${fmtRM(b2cRev)}</div><div class="sub">${((b2cRev/totalRev||0)*100).toFixed(0)}% daripada jumlah</div></div>
+  <div class="kpi kn"><div class="lbl">Total Revenue</div><div class="val">${fmtRM(totalRev)}</div></div>
+  <div class="kpi ko"><div class="lbl">B2B Revenue</div><div class="val">${fmtRM(b2bRev)}</div><div class="sub">${((b2bRev/totalRev||0)*100).toFixed(0)}% of total</div></div>
+  <div class="kpi kg"><div class="lbl">B2C Revenue</div><div class="val">${fmtRM(b2cRev)}</div><div class="sub">${((b2cRev/totalRev||0)*100).toFixed(0)}% of total</div></div>
   <div class="kpi kp"><div class="lbl">Avg Order B2C</div><div class="val">${fmtRM(b2cRev/(b2cDone.length||1))}</div></div>
 </div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-  <div class="card"><div class="card-h"><h3>📦 Top Kategori (Qty)</h3></div><div class="card-body">
+  <div class="card"><div class="card-h"><h3>📦 Top Categories (Qty)</h3></div><div class="card-body">
     <div class="bar-chart">${topCats.map(([l,v],i)=>`<div class="bar-row">
       <div class="bar-label" style="width:110px">${l}</div>
       <div class="bar-track"><div class="bar-fill ${['navy','orange','green','purple','teal'][i]}" style="width:${(v/maxCat*100).toFixed(0)}%"></div></div>
@@ -3256,11 +3256,11 @@ function pageHqAnalytics(){
 
 function pagePurchaseReport(){
   const posted=GRNS.filter(g=>g.status==='posted');
-  const head=`<div class="page-head"><h2>🧾 Laporan Pembelian</h2><p>Analisis kos belian dari GRN yang telah diterima</p></div>`;
+  const head=`<div class="page-head"><h2>🧾 Purchase Report</h2><p>Purchase cost analysis from received GRNs</p></div>`;
   if(!posted.length){
-    return head+`<div class="card"><div class="card-body"><div class="empty-state"><div class="empty-icon">🧾</div><h4>Tiada Laporan</h4><p>Belum ada GRN diterima untuk dijana laporan.</p></div></div></div>`;
+    return head+`<div class="card"><div class="card-body"><div class="empty-state"><div class="empty-icon">🧾</div><h4>No Report</h4><p>No GRN received to generate a report yet.</p></div></div></div>`;
   }
-  const BULAN=['Januari','Februari','Mac','April','Mei','Jun','Julai','Ogos','September','Oktober','November','Disember'];
+  const BULAN=['January','February','March','April','May','June','July','August','September','October','November','December'];
   const bars=['navy','orange','green','purple','teal'];
   const totalPurchase=posted.reduce((s,g)=>s+(parseFloat(g.total)||0),0);
   const grnCount=posted.length;
@@ -3276,7 +3276,7 @@ function pagePurchaseReport(){
 
   // (d) ikut pembekal
   const bySupplier={};
-  posted.forEach(g=>{const s=g.supplierName||'Tidak diketahui';bySupplier[s]=(bySupplier[s]||0)+(parseFloat(g.total)||0);});
+  posted.forEach(g=>{const s=g.supplierName||'Unknown';bySupplier[s]=(bySupplier[s]||0)+(parseFloat(g.total)||0);});
   const suppliers=Object.entries(bySupplier).sort((a,b)=>b[1]-a[1]).slice(0,6);
   const maxSupplier=Math.max(...suppliers.map(x=>x[1]),0);
 
@@ -3292,20 +3292,20 @@ function pagePurchaseReport(){
 
   return head+`
 <div class="kpis">
-  <div class="kpi kn"><div class="lbl">Jumlah Pembelian</div><div class="val">${fmtRM(totalPurchase)}</div></div>
-  <div class="kpi ko"><div class="lbl">Bilangan GRN</div><div class="val">${grnCount}</div><div class="sub">GRN diterima</div></div>
-  <div class="kpi kg"><div class="lbl">Bilangan PO</div><div class="val">${poCount}</div><div class="sub">Purchase Order</div></div>
-  <div class="kpi kp"><div class="lbl">Purata Nilai GRN</div><div class="val">${fmtRM(avgGrn)}</div></div>
+  <div class="kpi kn"><div class="lbl">Total Purchases</div><div class="val">${fmtRM(totalPurchase)}</div></div>
+  <div class="kpi ko"><div class="lbl">GRN Count</div><div class="val">${grnCount}</div><div class="sub">GRNs received</div></div>
+  <div class="kpi kg"><div class="lbl">PO Count</div><div class="val">${poCount}</div><div class="sub">Purchase Order</div></div>
+  <div class="kpi kp"><div class="lbl">Average GRN Value</div><div class="val">${fmtRM(avgGrn)}</div></div>
 </div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-  <div class="card"><div class="card-h"><h3>📅 Pembelian Ikut Bulan</h3></div><div class="card-body">
+  <div class="card"><div class="card-h"><h3>📅 Purchases by Month</h3></div><div class="card-body">
     <div class="bar-chart">${months.map(([m,v],i)=>`<div class="bar-row">
       <div class="bar-label" style="width:110px">${monthLabel(m)}</div>
       <div class="bar-track"><div class="bar-fill ${bars[i%bars.length]}" style="width:${maxMonth?(v/maxMonth*100).toFixed(0):0}%"></div></div>
       <div class="bar-val">${fmtRM(v)}</div>
     </div>`).join('')}</div>
   </div></div>
-  <div class="card"><div class="card-h"><h3>🚚 Pembelian Ikut Pembekal</h3></div><div class="card-body">
+  <div class="card"><div class="card-h"><h3>🚚 Purchases by Supplier</h3></div><div class="card-body">
     <div class="bar-chart">${suppliers.map(([s,v],i)=>`<div class="bar-row">
       <div class="bar-label" style="width:110px">${s}</div>
       <div class="bar-track"><div class="bar-fill ${bars[i%bars.length]}" style="width:${maxSupplier?(v/maxSupplier*100).toFixed(0):0}%"></div></div>
@@ -3313,9 +3313,9 @@ function pagePurchaseReport(){
     </div>`).join('')}</div>
   </div></div>
 </div>
-<div class="card" style="margin-top:16px"><div class="card-h"><h3>📦 Produk Paling Banyak Dibeli</h3></div>
+<div class="card" style="margin-top:16px"><div class="card-h"><h3>📦 Most Purchased Products</h3></div>
   <div class="tbl-wrap">
-    <table><thead><tr><th>Produk</th><th>Qty Diterima</th><th>Jumlah Kos (RM)</th></tr></thead><tbody>
+    <table><thead><tr><th>Product</th><th>Qty Received</th><th>Total Cost (RM)</th></tr></thead><tbody>
       ${products.map(([pid,d])=>{
         const pr=PRODUCTS.find(p=>p.id===pid);
         const nm=pr?(pr.name||pr.desc||pid):pid;
