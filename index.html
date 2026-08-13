@@ -3340,45 +3340,45 @@ function pageB2bDashboard(){
   const done=myOrders.filter(o=>o.status==='done').length;
   const totalSpend=myOrders.filter(o=>o.status==='done').reduce((s,o)=>s+orderTotal(o.items),0);
   const cartCount=Object.keys(B2B_CART).length;
-  return `<div class="page-head"><h2>🏪 ${SESSION.org}</h2><p>Selamat datang, ${SESSION.name}. Buat order dari katalog HQ.</p></div>
+  return `<div class="page-head"><h2>🏪 ${SESSION.org}</h2><p>Welcome, ${SESSION.name}. Order from the HQ catalog.</p></div>
 <div class="kpis">
-  <div class="kpi kn"><div class="lbl">Order Aktif</div><div class="val">${pending}</div><div class="sub">Dalam proses</div></div>
-  <div class="kpi kg"><div class="lbl">Order Selesai</div><div class="val">${done}</div></div>
-  <div class="kpi ko"><div class="lbl">Jumlah Perbelanjaan</div><div class="val">${fmtRM(totalSpend)}</div></div>
-  <div class="kpi kp"><div class="lbl">Troli B2B</div><div class="val">${cartCount}</div><div class="sub"><a href="#" onclick="navTo('b2b-order')">Checkout →</a></div></div>
+  <div class="kpi kn"><div class="lbl">Active Orders</div><div class="val">${pending}</div><div class="sub">In progress</div></div>
+  <div class="kpi kg"><div class="lbl">Completed Orders</div><div class="val">${done}</div></div>
+  <div class="kpi ko"><div class="lbl">Total Spending</div><div class="val">${fmtRM(totalSpend)}</div></div>
+  <div class="kpi kp"><div class="lbl">B2B Cart</div><div class="val">${cartCount}</div><div class="sub"><a href="#" onclick="navTo('b2b-order')">Checkout →</a></div></div>
 </div>
 <div class="card">
-  <div class="card-h"><h3>📋 Order Terkini</h3><button class="btn btn-ghost btn-xs" onclick="navTo('b2b-myorders')">View all</button></div>
+  <div class="card-h"><h3>📋 Recent Orders</h3><button class="btn btn-ghost btn-xs" onclick="navTo('b2b-myorders')">View all</button></div>
   <div class="tbl-wrap"><table>
     <thead><tr><th>Order No.</th><th>Date</th><th>Item</th><th>Total</th><th>Status</th></tr></thead>
     <tbody>
       ${myOrders.length?myOrders.slice(0,4).map(o=>`<tr>
         <td style="font-weight:700">${o.id}</td><td>${o.date}</td>
-        <td>${o.items.length} item</td>
+        <td>${o.items.length} items</td>
         <td style="font-weight:600">${fmtRM(orderTotal(o.items))}</td>
         <td>${statusPill(o.status)}</td>
-      </tr>`).join(''):`<tr><td colspan="5"><div class="empty-state" style="padding:30px"><p>Belum ada order. <a href="#" onclick="navTo('b2b-order')">Buat order pertama →</a></p></div></td></tr>`}
+      </tr>`).join(''):`<tr><td colspan="5"><div class="empty-state" style="padding:30px"><p>No orders yet. <a href="#" onclick="navTo('b2b-order')">Create your first order →</a></p></div></td></tr>`}
     </tbody>
   </table></div>
 </div>
-<button class="btn btn-primary" style="font-size:15px;padding:13px 28px" onclick="navTo('b2b-order')">🛒 Buat Order Baru</button>`;
+<button class="btn btn-primary" style="font-size:15px;padding:13px 28px" onclick="navTo('b2b-order')">🛒 Create New Order</button>`;
 }
 
 function pageB2bOrder(){
   let search=window._b2bShopSearch||'';
   const shown=PRODUCTS.filter(p=>!search||p.name.toLowerCase().includes(search.toLowerCase())||p.cat.toLowerCase().includes(search.toLowerCase()));
   const cartCount=Object.keys(B2B_CART).length;
-  return `<div class="page-head"><h2>🛒 Order B2B — Katalog HQ</h2><p>Pilih produk dan masukkan kuantiti. Harga adalah harga borong B2B.</p></div>
+  return `<div class="page-head"><h2>🛒 B2B Order — HQ Catalog</h2><p>Select products and enter quantity. Prices are B2B wholesale.</p></div>
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-  <div class="search-wrap"><input placeholder="Cari produk..." value="${search}" id="b2bSearchInp" style="width:260px"></div>
+  <div class="search-wrap"><input placeholder="Search products..." value="${search}" id="b2bSearchInp" style="width:260px"></div>
   <div style="display:flex;align-items:center;gap:12px">
-    <span style="font-size:14px;color:var(--grey)">${cartCount} item dalam troli</span>
+    <span style="font-size:14px;color:var(--grey)">${cartCount} items in cart</span>
     ${cartCount>0?`<button class="btn btn-primary" onclick="checkoutB2b()">Checkout →</button>`:''}
   </div>
 </div>
 <div class="card">
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Produk</th><th>Kategori</th><th>Harga B2B</th><th>Stok HQ</th><th>Qty</th><th>Subtotal</th></tr></thead>
+    <thead><tr><th>Product</th><th>Category</th><th>B2B Price</th><th>HQ Stock</th><th>Qty</th><th>Subtotal</th></tr></thead>
     <tbody id="b2bTbody">
       ${shown.map(p=>{
         const inCart=B2B_CART[p.id]||0;
@@ -3398,10 +3398,10 @@ function pageB2bOrder(){
 ${cartCount>0?`<div class="card" style="background:var(--navy-l);border-color:var(--navy)">
   <div class="card-body" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
     <div>
-      <div style="font-size:13px;color:var(--grey)">Jumlah Troli</div>
+      <div style="font-size:13px;color:var(--grey)">Cart Total</div>
       <div style="font-size:24px;font-weight:800;font-family:Sora;color:var(--navy)">${fmtRM(Object.entries(B2B_CART).reduce((s,[pid,qty])=>{const p=PRODUCTS.find(x=>x.id===pid);return s+(p?p.b2bPrice*qty:0);},0))}</div>
     </div>
-    <button class="btn btn-primary" style="font-size:15px" onclick="checkoutB2b()">Hantar Order →</button>
+    <button class="btn btn-primary" style="font-size:15px" onclick="checkoutB2b()">Send Order →</button>
   </div>
 </div>`:''}`;
 }
@@ -3439,28 +3439,28 @@ async function checkoutB2b(){
     const p=PRODUCTS.find(x=>x.id===pid);
     return p?{pid,qty,price:p.b2bPrice}:null;
   }).filter(Boolean);
-  if(!items.length){toast('❌ Troli kosong');return;}
+  if(!items.length){toast('❌ Cart is empty');return;}
   const o={id:uid('B2B'),branch:SESSION.org,date:today(),status:'new',items,note:''};
   B2B_ORDERS.push(o);B2B_CART={};
   await Promise.all([saveB2BOrders(),saveB2BCart()]);
   buildSidebar();navTo('b2b-myorders');
-  toast('✓ Order '+o.id+' dihantar ke HQ!');
+  toast('✓ Order '+o.id+' sent to HQ!');
 }
 
 function pageB2bMyOrders(){
   const myOrders=B2B_ORDERS.filter(o=>o.branch===SESSION.org).slice().reverse();
-  return `<div class="page-head"><h2>📋 Order Saya</h2><p>Semak status order yang dihantar ke HQ</p></div>
+  return `<div class="page-head"><h2>📋 My Orders</h2><p>Check the status of orders sent to HQ</p></div>
 <div class="card">
   <div class="tbl-wrap"><table>
     <thead><tr><th>Order No.</th><th>Date</th><th>Item</th><th>Total</th><th>Status</th><th></th></tr></thead>
     <tbody>
       ${myOrders.length?myOrders.map(o=>`<tr>
         <td style="font-weight:700">${o.id}</td><td>${o.date}</td>
-        <td>${o.items.length} item</td>
+        <td>${o.items.length} items</td>
         <td style="font-weight:600">${fmtRM(orderTotal(o.items))}</td>
         <td>${statusPill(o.status)}</td>
         <td><button class="btn btn-ghost btn-xs" onclick="viewB2bOrder('${o.id}')">View</button></td>
-      </tr>`).join(''):`<tr><td colspan="6"><div class="empty-state" style="padding:40px"><div class="empty-icon">📋</div><h4>Belum ada order</h4><p>Buat order pertama anda!</p></div></td></tr>`}
+      </tr>`).join(''):`<tr><td colspan="6"><div class="empty-state" style="padding:40px"><div class="empty-icon">📋</div><h4>No orders yet</h4><p>Create your first order!</p></div></td></tr>`}
     </tbody>
   </table></div>
 </div>`;
@@ -3471,23 +3471,23 @@ function pageB2bMyOrders(){
 // ============================================================
 function pageB2cStore(){
   let search=window._b2cSearch||'';
-  let catFilter=window._b2cCat||'Semua';
-  const cats=['Semua',...new Set(PRODUCTS.map(p=>p.cat))];
+  let catFilter=window._b2cCat||'All';
+  const cats=['All',...new Set(PRODUCTS.map(p=>p.cat))];
   let shown=PRODUCTS.filter(p=>{
     const matchSearch=!search||p.name.toLowerCase().includes(search.toLowerCase());
-    const matchCat=catFilter==='Semua'||p.cat===catFilter;
+    const matchCat=catFilter==='All'||p.cat===catFilter;
     return matchSearch&&matchCat;
   });
   const cartCount=Object.keys(B2C_CART).length;
-  return `<div class="page-head"><h2>🛒 Kedai OrcaHub</h2><p>Beli ubat-ubatan berkualiti, dihantar terus ke pintu rumah anda</p></div>
+  return `<div class="page-head"><h2>🛒 OrcaHub Store</h2><p>Buy quality medicines, delivered right to your door</p></div>
 <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;align-items:center;justify-content:space-between">
   <div style="display:flex;gap:8px;flex-wrap:wrap">
     ${cats.map(c=>`<button class="btn btn-sm ${catFilter===c?'btn-primary':'btn-ghost'}" onclick="window._b2cCat='${c}';navTo('b2c-store')">${c}</button>`).join('')}
   </div>
   <div style="display:flex;gap:10px;align-items:center">
-    <div class="search-wrap"><input placeholder="Cari produk..." value="${search}" id="b2cSearchInp" style="width:200px"></div>
+    <div class="search-wrap"><input placeholder="Search products..." value="${search}" id="b2cSearchInp" style="width:200px"></div>
     <button class="btn btn-primary" style="position:relative" onclick="navTo('b2c-cart')">
-      🛒 Troli
+      🛒 Cart
       ${cartCount>0?`<span class="cart-count">${cartCount}</span>`:''}
     </button>
   </div>
@@ -3502,7 +3502,7 @@ function pageB2cStore(){
         <div class="prod-name">${p.name}</div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px">
           <div class="prod-price">${fmtRM(p.b2cPrice)}</div>
-          ${p.stock<=0?'<span class="pill p-cancel" style="font-size:11px">Habis</span>':''}
+          ${p.stock<=0?'<span class="pill p-cancel" style="font-size:11px">Out of stock</span>':''}
         </div>
         <div class="prod-actions" style="margin-top:10px">
           ${inCart>0?`<div class="cart-qty-wrap">
@@ -3510,12 +3510,12 @@ function pageB2cStore(){
             <span>${inCart}</span>
             <button onclick="setB2cCart('${p.id}',${inCart+1})">+</button>
           </div>
-          <button class="btn btn-red btn-sm" onclick="setB2cCart('${p.id}',0)">Buang</button>`
-          :`<button class="btn btn-primary" style="flex:1" onclick="setB2cCart('${p.id}',1)" ${p.stock<=0?'disabled':''}>+ Tambah</button>`}
+          <button class="btn btn-red btn-sm" onclick="setB2cCart('${p.id}',0)">Remove</button>`
+          :`<button class="btn btn-primary" style="flex:1" onclick="setB2cCart('${p.id}',1)" ${p.stock<=0?'disabled':''}>+ Add</button>`}
         </div>
       </div>
     </div>`;
-  }).join(''):`<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🔍</div><h4>Tiada produk dijumpai</h4><p>Cuba carian lain</p></div>`}
+  }).join(''):`<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🔍</div><h4>No products found</h4><p>Try a different search</p></div>`}
 </div>`;
 }
 
@@ -3526,10 +3526,10 @@ function bindB2cStore(){
 
 function filterB2cStore(q){
   window._b2cSearch=q;
-  const catFilter=window._b2cCat||'Semua';
+  const catFilter=window._b2cCat||'All';
   const shown=PRODUCTS.filter(p=>{
     const matchSearch=!q||p.name.toLowerCase().includes(q.toLowerCase());
-    const matchCat=catFilter==='Semua'||p.cat===catFilter;
+    const matchCat=catFilter==='All'||p.cat===catFilter;
     return matchSearch&&matchCat;
   });
   const grid=document.getElementById('b2cGrid');if(!grid)return;
@@ -3542,7 +3542,7 @@ function filterB2cStore(q){
         <div class="prod-name">${p.name}</div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px">
           <div class="prod-price">${fmtRM(p.b2cPrice)}</div>
-          ${p.stock<=0?'<span class="pill p-cancel" style="font-size:11px">Habis</span>':''}
+          ${p.stock<=0?'<span class="pill p-cancel" style="font-size:11px">Out of stock</span>':''}
         </div>
         <div class="prod-actions" style="margin-top:10px">
           ${inCart>0?`<div class="cart-qty-wrap">
@@ -3550,12 +3550,12 @@ function filterB2cStore(q){
             <span>${inCart}</span>
             <button onclick="setB2cCart('${p.id}',${inCart+1})">+</button>
           </div>
-          <button class="btn btn-red btn-sm" onclick="setB2cCart('${p.id}',0)">Buang</button>`
-          :`<button class="btn btn-primary" style="flex:1" onclick="setB2cCart('${p.id}',1)" ${p.stock<=0?'disabled':''}>+ Tambah</button>`}
+          <button class="btn btn-red btn-sm" onclick="setB2cCart('${p.id}',0)">Remove</button>`
+          :`<button class="btn btn-primary" style="flex:1" onclick="setB2cCart('${p.id}',1)" ${p.stock<=0?'disabled':''}>+ Add</button>`}
         </div>
       </div>
     </div>`;
-  }).join(''):`<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🔍</div><h4>Tiada produk dijumpai</h4><p>Cuba carian lain</p></div>`;
+  }).join(''):`<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🔍</div><h4>No products found</h4><p>Try a different search</p></div>`;
 }
 
 async function setB2cCart(pid,val){
@@ -3571,8 +3571,8 @@ function pageB2cCart(){
     return p?{p,pid,qty}:null;
   }).filter(Boolean);
   const total=items.reduce((s,{p,qty})=>s+p.b2cPrice*qty,0);
-  return `<div class="page-head"><h2>🛒 Troli Saya</h2><p>Semak order sebelum checkout</p></div>
-${items.length===0?`<div class="card"><div class="card-body"><div class="empty-state"><div class="empty-icon">🛒</div><h4>Troli kosong</h4><p>Tambah produk dari <a href="#" onclick="navTo('b2c-store')">kedai</a></p></div></div></div>`:`
+  return `<div class="page-head"><h2>🛒 My Cart</h2><p>Review your order before checkout</p></div>
+${items.length===0?`<div class="card"><div class="card-body"><div class="empty-state"><div class="empty-icon">🛒</div><h4>Cart is empty</h4><p>Add products from the <a href="#" onclick="navTo('b2c-store')">store</a></p></div></div></div>`:`
 <div class="card">
   ${items.map(({p,pid,qty})=>`<div class="prod-row">
     <div class="pemoji"></div>
@@ -3586,19 +3586,19 @@ ${items.length===0?`<div class="card"><div class="card-body"><div class="empty-s
     <button class="btn btn-red btn-xs" onclick="updateCartQty('${pid}',0)">✕</button>
   </div>`).join('')}
   <div style="padding:16px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;align-items:center;gap:20px">
-    <div style="font-size:14px;color:var(--grey)">Jumlah: <strong style="font-size:20px;font-family:Sora;color:var(--navy)">${fmtRM(total)}</strong></div>
+    <div style="font-size:14px;color:var(--grey)">Total: <strong style="font-size:20px;font-family:Sora;color:var(--navy)">${fmtRM(total)}</strong></div>
   </div>
 </div>
-<div class="card"><div class="card-h"><h3>🏠 Alamat Penghantaran</h3></div><div class="card-body">
+<div class="card"><div class="card-h"><h3>🏠 Delivery Address</h3></div><div class="card-body">
   <div class="form-row">
-    <div class="fld full"><label>Nama Penerima</label><input id="ckName" value="${SESSION.name}"></div>
-    <div class="fld full"><label>Alamat Penghantaran</label><textarea id="ckAddr" rows="2" placeholder="No rumah, jalan, bandar, poskod"></textarea></div>
-    <div class="fld"><label>No. Telefon</label><input id="ckPhone" placeholder="012-3456789" type="tel"></div>
-    <div class="fld"><label>Nota (Pilihan)</label><input id="ckNote" placeholder="Nota kepada penghantar"></div>
+    <div class="fld full"><label>Recipient Name</label><input id="ckName" value="${SESSION.name}"></div>
+    <div class="fld full"><label>Delivery Address</label><textarea id="ckAddr" rows="2" placeholder="House no., street, city, postcode"></textarea></div>
+    <div class="fld"><label>Phone No.</label><input id="ckPhone" placeholder="012-3456789" type="tel"></div>
+    <div class="fld"><label>Note (Optional)</label><input id="ckNote" placeholder="Note to the courier"></div>
   </div>
   <div style="margin-top:8px;display:flex;gap:10px;justify-content:flex-end">
-    <button class="btn btn-ghost" onclick="navTo('b2c-store')">← Teruskan Beli-belah</button>
-    <button class="btn btn-primary" style="font-size:15px" onclick="checkoutB2c()">Sahkan Order (${fmtRM(total)}) →</button>
+    <button class="btn btn-ghost" onclick="navTo('b2c-store')">← Continue Shopping</button>
+    <button class="btn btn-primary" style="font-size:15px" onclick="checkoutB2c()">Confirm Order (${fmtRM(total)}) →</button>
   </div>
 </div></div>`}`;
 }
@@ -3611,12 +3611,12 @@ async function updateCartQty(pid,val){
 
 async function checkoutB2c(){
   const addr=(document.getElementById('ckAddr')?.value||'').trim();
-  if(!addr){toast('❌ Sila isi alamat penghantaran');return;}
+  if(!addr){toast('❌ Please enter delivery address');return;}
   const items=Object.entries(B2C_CART).map(([pid,qty])=>{
     const p=PRODUCTS.find(x=>x.id===pid);
     return p?{pid,qty,price:p.b2cPrice}:null;
   }).filter(Boolean);
-  if(!items.length){toast('❌ Troli kosong');return;}
+  if(!items.length){toast('❌ Cart is empty');return;}
   const o={
     id:uid('B2C'),customer:SESSION.name,email:SESSION.username+'@demo.com',
     date:today(),status:'new',items,
@@ -3625,18 +3625,18 @@ async function checkoutB2c(){
   B2C_ORDERS.push(o);B2C_CART={};
   await Promise.all([saveB2COrders(),saveB2CCart()]);
   buildSidebar();navTo('b2c-orders');
-  toast('✓ Order '+o.id+' berjaya! Kami akan proses segera.');
+  toast('✓ Order '+o.id+' placed! We will process it shortly.');
 }
 
 function pageB2cMyOrders(){
   const myOrders=B2C_ORDERS.filter(o=>o.customer===SESSION.name).slice().reverse();
-  return `<div class="page-head"><h2>📋 Order Saya</h2><p>Jejak semua order B2C anda</p></div>
+  return `<div class="page-head"><h2>📋 My Orders</h2><p>Track all your B2C orders</p></div>
 <div class="card">
   ${myOrders.length?myOrders.map(o=>`<div style="padding:16px 20px;border-bottom:1px solid var(--line)">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
       <div>
         <div style="font-weight:700;font-size:15px">${o.id}</div>
-        <div style="font-size:12px;color:var(--grey)">${o.date} · ${o.items.length} item</div>
+        <div style="font-size:12px;color:var(--grey)">${o.date} · ${o.items.length} items</div>
       </div>
       <div style="text-align:right">
         ${statusPill(o.status)}
@@ -3648,8 +3648,8 @@ function pageB2cMyOrders(){
         <span>${pname(i.pid)}</span><span style="color:var(--grey)">×${i.qty}</span>
       </div>`).join('')}
     </div>
-    ${o.status==='done'?'<div style="font-size:12px;color:var(--green);margin-top:8px;font-weight:600">✓ Telah dihantar ke: '+o.addr+'</div>':''}
-  </div>`).join(''):`<div class="card-body"><div class="empty-state"><div class="empty-icon">📋</div><h4>Belum ada order</h4><p><a href="#" onclick="navTo(\'b2c-store\')">Beli sekarang →</a></p></div></div>`}
+    ${o.status==='done'?'<div style="font-size:12px;color:var(--green);margin-top:8px;font-weight:600">✓ Delivered to: '+o.addr+'</div>':''}
+  </div>`).join(''):`<div class="card-body"><div class="empty-state"><div class="empty-icon">📋</div><h4>No orders yet</h4><p><a href="#" onclick="navTo(\'b2c-store\')">Shop now →</a></p></div></div>`}
 </div>`;
 }
 
