@@ -679,6 +679,7 @@ let SUPPLIERS=[];
 let CATEGORIES=[];
 let STOCKTAKES=[];
 let CLINIC_STOCK=[];
+let RECEIPTS=[];
 
 // ===== LOAD / SEED DATA =====
 async function loadData(){
@@ -709,11 +710,14 @@ async function loadData(){
     STOCKTAKES=st?JSON.parse(st):[];
     const cs=await STORE.get('oh_clinic_stock');
     CLINIC_STOCK=cs?JSON.parse(cs):[];
-  }catch(e){PRODUCTS=SEED_PRODUCTS.map(x=>({...x}));BATCHES=seedBatches();SCANLOG=[];SUPPLIERS=seedSuppliers();CATEGORIES=seedCategories();STOCKTAKES=[];CLINIC_STOCK=[];}
+    const rc=await STORE.get('oh_receipts');
+    RECEIPTS=rc?JSON.parse(rc):[];
+  }catch(e){PRODUCTS=SEED_PRODUCTS.map(x=>({...x}));BATCHES=seedBatches();SCANLOG=[];SUPPLIERS=seedSuppliers();CATEGORIES=seedCategories();STOCKTAKES=[];CLINIC_STOCK=[];RECEIPTS=[];}
 }
 
 async function saveStocktakes(){await STORE.set('oh_stocktakes',JSON.stringify(STOCKTAKES));}
 async function saveClinicStock(){await STORE.set('oh_clinic_stock',JSON.stringify(CLINIC_STOCK));}
+async function saveReceipts(){await STORE.set('oh_receipts',JSON.stringify(RECEIPTS));}
 
 async function resetDemoData(){
   showConfirm('Reset Demo Data',
@@ -721,7 +725,7 @@ async function resetDemoData(){
     'Yes, Reset',async()=>{
       const keys=['oh_products','oh_pos','oh_grns','oh_batches',
         'oh_scanlog','oh_suppliers','oh_categories',
-        'oh_b2b_orders','oh_b2c_orders','oh_stocktakes','oh_clinic_stock','oh_doc_counter'];
+        'oh_b2b_orders','oh_b2c_orders','oh_stocktakes','oh_clinic_stock','oh_receipts','oh_doc_counter'];
       // kumpul juga semua cart per-user
       try{
         for(let i=0;i<localStorage.length;i++){
@@ -1091,6 +1095,7 @@ const MENUS={
     {id:'hq-dashboard',ic:'🏠',label:'Dashboard'},
     {sect:'B2B Procurement'},
     {id:'hq-b2b-orders',ic:'📋',label:'B2B Orders',badge:'b2b'},
+    {id:'hq-reship',    ic:'📦',label:'Outstanding to Reship',badge:'reship'},
     {id:'hq-catalog',   ic:'📦',label:'Product Catalog'},
     {id:'hq-batches',   ic:'🗓️',label:'Batch & Expiry',badge:'expiry'},
     {id:'hq-stocktake', ic:'📋',label:'Stocktake'},
@@ -1138,6 +1143,7 @@ function getBadgeCount(badge){
   }
   if(badge==='expiry')return BATCHES.filter(b=>['expired','critical'].includes(expiryStatus(b.expiry))).length;
   if(badge==='incoming')return B2B_ORDERS.filter(o=>o.branch===SESSION.org&&o.status==='in_transit').length||'';
+  if(badge==='reship')return B2B_ORDERS.filter(o=>o.reshipPending).length||'';
   return 0;
 }
 
@@ -1162,7 +1168,7 @@ function navTo(page){
   buildSidebar();
   renderPage();
   const labels={'sa-dashboard':'Dashboard','sa-tenants':'Tenants','sa-plans':'Subscription Plans','sa-analytics':'Analytics',
-    'hq-dashboard':'Dashboard','hq-b2b-orders':'Order B2B','hq-catalog':'Catalog','hq-batches':'Batch & Expiry','hq-scanlog':'Scan Log','hq-suppliers':'Suppliers','hq-po':'Purchase Orders','hq-grn':'GRN','hq-grn-form':'GRN Form','hq-stocktake':'Stocktake','hq-b2c-orders':'Order B2C','hq-purchase-report':'Purchase Report','hq-analytics':'Analytics',
+    'hq-dashboard':'Dashboard','hq-b2b-orders':'Order B2B','hq-reship':'Outstanding to Reship','hq-catalog':'Catalog','hq-batches':'Batch & Expiry','hq-scanlog':'Scan Log','hq-suppliers':'Suppliers','hq-po':'Purchase Orders','hq-grn':'GRN','hq-grn-form':'GRN Form','hq-stocktake':'Stocktake','hq-b2c-orders':'Order B2C','hq-purchase-report':'Purchase Report','hq-analytics':'Analytics',
     'b2b-shop':'Dashboard','b2b-order':'New Order','b2b-myorders':'My Orders','b2b-incoming':'Incoming Deliveries','b2b-stock':'My Stock',
     'b2c-store':'Store','b2c-cart':'Cart','b2c-orders':'My Orders',
     'sup-dashboard':'Dashboard','sup-products':'My Products','sup-po':'Incoming PO','sup-delivery':'Delivery',
@@ -1256,6 +1262,7 @@ function renderPage(){
   else if(pg==='sa-analytics')c.innerHTML=pageSaAnalytics();
   else if(pg==='hq-dashboard')c.innerHTML=pageHqDashboard();
   else if(pg==='hq-b2b-orders')c.innerHTML=pageHqB2bOrders();
+  else if(pg==='hq-reship')   c.innerHTML=pageHqReship();
   else if(pg==='hq-batches')  c.innerHTML=pageHqBatches();
   else if(pg==='hq-stocktake') c.innerHTML=pageStocktake();
   else if(pg==='hq-stocktake-count'){c.innerHTML=pageStocktakeCount();focusScan('stScan');}
@@ -3740,8 +3747,8 @@ function pageB2bMyOrders(){
         <td style="font-weight:700">${o.id}</td><td>${o.date}</td>
         <td>${o.items.length} items</td>
         <td style="font-weight:600">${fmtRM(orderTotal(o.items))}</td>
-        <td>${statusPill(o.status)}${o.hasBackorder?` <span class="pill p-pending" style="font-size:10px" title="Contains backordered items">BO</span>`:''}</td>
-        <td><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-xs" onclick="viewB2bOrder('${o.id}')">View</button>${(o.status==='process'||o.status==='in_transit'||o.status==='done')?`<button class="btn btn-ghost btn-xs" onclick="printDO('${o.id}')" title="Cetak Delivery Order">🖨️ DO</button><button class="btn btn-ghost btn-xs" onclick="printB2bInvoice('${o.id}')" title="Cetak Invois">🖨️ Invois</button>`:''}</div></td>
+        <td>${statusPill(o.status)}${o.hasBackorder?` <span class="pill p-pending" style="font-size:10px" title="Contains backordered items">BO</span>`:''}${o.isReship?` <span class="pill p-process" style="font-size:10px" title="Reship of ${o.parentOrderId||''}">Reship</span>`:''}${o.hasOutstanding?` <span class="pill p-pending" style="font-size:10px" title="Some items short-received, pending reship">Partial</span>`:''}</td>
+        <td><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-xs" onclick="viewB2bOrder('${o.id}')">View</button>${(o.status==='process'||o.status==='in_transit'||o.status==='done')?`<button class="btn btn-ghost btn-xs" onclick="printDO('${o.id}')" title="Cetak Delivery Order">🖨️ DO</button><button class="btn btn-ghost btn-xs" onclick="printB2bInvoice('${o.id}')" title="Cetak Invois">🖨️ Invois</button>`:''}${(()=>{const rcs=RECEIPTS.filter(r=>r.parentOrderId===(o.parentOrderId||o.id)||r.orderId===o.id);return o.status==='done'&&rcs.length?`<button class="btn btn-ghost btn-xs" onclick="viewReceipt('${rcs[rcs.length-1].id}')" title="View latest receipt">🧾 Receipt</button>`:'';})()}</div></td>
       </tr>`).join(''):`<tr><td colspan="6"><div class="empty-state" style="padding:40px"><div class="empty-icon">📋</div><h4>No orders yet</h4><p>Create your first order!</p></div></td></tr>`}
     </tbody>
   </table></div>
@@ -3783,6 +3790,7 @@ function pageB2bIncoming(){
   </table></div>
   <div class="card-body" style="border-top:1px solid var(--line)">
     <button class="btn btn-primary" onclick="confirmClinicReceipt('${o.id}')">Confirm Receipt</button>
+    <div style="font-size:12px;color:var(--grey);margin-top:8px">Note: Any shortfall will be recorded as outstanding and reshipped by HQ separately.</div>
   </div>
 </div>`).join('');
 }
@@ -3790,6 +3798,7 @@ function pageB2bIncoming(){
 async function confirmClinicReceipt(orderId){
   const o=B2B_ORDERS.find(x=>x.id===orderId);if(!o)return;
   let anyReceived=false;
+  const receiptItems=[]; // apa yang diterima kali ini (untuk resit)
   o.items.forEach((it,idx)=>{
     const el=document.getElementById('rcv_'+orderId+'_'+idx);
     const rcv=el?parseInt(el.value)||0:0;
@@ -3809,17 +3818,33 @@ async function confirmClinicReceipt(orderId){
           rem-=takeFromBatch;
         });
         it.received=(it.received||0)+actual;
+        receiptItems.push({pid:it.pid, qty:actual, batchNo:it.batchNo||'', expiry:it.expiry||''});
         anyReceived=true;
       }
     }
   });
   if(!anyReceived){toast('❌ Enter quantity to receive');return;}
-  // jika semua item dah terima penuh → order 'done'
-  const allDone=o.items.every(it=>(it.received||0)>=it.qty);
-  if(allDone)o.status='done';
-  await Promise.all([saveB2BOrders(),saveClinicStock()]);
+  // JANA RESIT untuk apa yang diterima kali ini
+  const seq=await nextDocSeq();
+  const receiptNo=`RCPT-${seq.year}-${String(seq.seq).padStart(4,'0')}`;
+  RECEIPTS.push({id:uid('RCPT'), receiptNo, orderId:o.id,
+    parentOrderId:o.parentOrderId||o.id, clinic:SESSION.org, date:today(),
+    receivedBy:SESSION?.name||'', items:receiptItems});
+  // PILIHAN B: order TUTUP walaupun ada baki; baki jadi outstanding untuk reship
+  let hasOutstanding=false;
+  o.items.forEach(it=>{
+    const bal=it.qty-(it.received||0);
+    if(bal>0){ it.outstanding=bal; hasOutstanding=true; }
+    else { it.outstanding=0; }
+  });
+  o.status='done';
+  o.hasOutstanding=hasOutstanding;
+  o.reshipPending=hasOutstanding;
+  await Promise.all([saveB2BOrders(),saveClinicStock(),saveReceipts()]);
   buildSidebar();navTo('b2b-incoming');
-  toast(allDone?'✓ All items received — order complete':'✓ Partial receipt recorded');
+  toast(hasOutstanding
+    ?'✓ Received. Balance recorded as outstanding for reship.'
+    :'✓ All items received — order complete');
 }
 
 function pageB2bStock(){
@@ -3860,6 +3885,101 @@ function pageB2bStock(){
     </tbody>
   </table></div>
 </div>`;
+}
+
+// ============================================================
+// HQ — Outstanding to Reship (Pilihan B)
+// ============================================================
+function pageHqReship(){
+  const pending=B2B_ORDERS.filter(o=>o.reshipPending);
+  const head=`<div class="page-head"><h2>📦 Outstanding to Reship</h2><p>Items short-received by clinics, pending reship</p></div>`;
+  if(!pending.length){
+    return head+`<div class="card"><div class="card-body"><div class="empty-state" style="padding:40px"><div class="empty-icon">📦</div><h4>No outstanding items to reship</h4><p>When a clinic receives less than ordered, the balance appears here.</p></div></div></div>`;
+  }
+  return head+pending.map(o=>{
+    const outItems=o.items.filter(i=>(i.outstanding||0)>0);
+    return `
+<div class="card">
+  <div class="card-h"><h3>${o.parentOrderId||o.id}</h3><span style="font-size:12px;color:var(--grey)">Clinic: ${o.branch} · Date: ${o.date}</span></div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Product</th><th>Ordered</th><th>Received</th><th>Outstanding</th></tr></thead>
+    <tbody>
+      ${outItems.map(it=>`<tr>
+        <td style="font-weight:600">${pname(it.pid)}</td>
+        <td>${it.qty}</td>
+        <td>${it.received||0}</td>
+        <td style="font-weight:700;color:var(--orange)">${it.outstanding}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table></div>
+  <div class="card-body" style="border-top:1px solid var(--line)">
+    <button class="btn btn-primary" onclick="reshipOutstanding('${o.id}')">Reship Outstanding</button>
+  </div>
+</div>`;
+  }).join('');
+}
+
+async function reshipOutstanding(orderId){
+  const o=B2B_ORDERS.find(x=>x.id===orderId);if(!o||!o.reshipPending)return;
+  const outItems=o.items.filter(i=>(i.outstanding||0)>0)
+    .map(i=>({pid:i.pid, qty:i.outstanding, bo:false}));
+  if(!outItems.length){o.reshipPending=false;await saveB2BOrders();return;}
+  showConfirm('Reship Outstanding',
+    'Create a new delivery for the outstanding items? It will reference the parent order.',
+    'Yes, Reship', async()=>{
+      const parent=o.parentOrderId||o.id;
+      // kira suffix R berapa: kira order sedia ada yang parentOrderId===parent
+      const rCount=B2B_ORDERS.filter(x=>(x.parentOrderId===parent)).length;
+      const newId=parent+'-R'+(rCount+1);
+      const ship={id:newId, parentOrderId:parent, branch:o.branch,
+        date:today(), status:'new', items:outItems, note:'Reship of '+parent,
+        isReship:true};
+      B2B_ORDERS.push(ship);
+      // tanda induk dah selesai reship (buang pending)
+      o.reshipPending=false;
+      // kosongkan outstanding pada induk (dah dipindah ke ship baru)
+      o.items.forEach(i=>{ if(i.outstanding){ i.reshippedIn=newId; i.outstanding=0; } });
+      await saveB2BOrders();buildSidebar();navTo('hq-b2b-orders');
+      toast('✓ Reship '+newId+' created — process it to ship');
+    });
+}
+
+// ============================================================
+// RESIT PENERIMAAN KLINIK — paparan & cetak
+// ============================================================
+function viewReceipt(receiptId){
+  const rc=RECEIPTS.find(x=>x.id===receiptId);if(!rc)return;
+  openDlg(`<h3>🧾 ${rc.receiptNo}</h3>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;font-size:13px">
+  <div><b>Parent Order:</b> ${rc.parentOrderId}</div><div><b>Delivery:</b> ${rc.orderId}</div>
+  <div><b>Clinic:</b> ${rc.clinic}</div><div><b>Date:</b> ${rc.date}</div>
+  <div><b>Received By:</b> ${rc.receivedBy||'-'}</div>
+</div>
+<table><thead><tr><th>Product</th><th>Qty</th><th>Batch</th><th>Expiry</th></tr></thead>
+<tbody>${rc.items.map(i=>`<tr>
+  <td>${pname(i.pid)}</td><td>${i.qty}</td>
+  <td style="font-family:monospace">${i.batchNo||'—'}</td><td>${i.expiry||'—'}</td>
+</tr>`).join('')}</tbody></table>
+<div class="dlg-footer">
+  <button class="btn btn-ghost" onclick="closeDlg()">Close</button>
+  <button class="btn btn-primary" onclick="printReceipt('${rc.id}')">🖨️ Print</button>
+</div>`,true);
+}
+
+function printReceipt(receiptId){
+  const rc=RECEIPTS.find(x=>x.id===receiptId);if(!rc)return;
+  const w=window.open('','_blank');if(!w)return;
+  w.document.write(`<html><head><title>${rc.receiptNo}</title><style>${docPrintCSS()}</style></head><body>
+  <div class="doc-head"><div><div class="co-name">Goods Receipt</div><div class="co-meta">${rc.clinic}</div></div><div class="doc-title">RECEIPT</div></div>
+  <div class="grid">
+    <div><b>Receipt No:</b> ${rc.receiptNo}</div><div><b>Date:</b> ${rc.date}</div>
+    <div><b>Parent Order:</b> ${rc.parentOrderId}</div><div><b>Delivery:</b> ${rc.orderId}</div>
+    <div><b>Received By:</b> ${rc.receivedBy||'-'}</div>
+  </div>
+  <table><thead><tr><th>Product</th><th>Qty</th><th>Batch</th><th>Expiry</th></tr></thead>
+  <tbody>${rc.items.map(i=>`<tr><td>${pname(i.pid)}</td><td>${i.qty}</td><td>${i.batchNo||'—'}</td><td>${i.expiry||'—'}</td></tr>`).join('')}</tbody></table>
+  </body></html>`);
+  w.document.close();w.focus();setTimeout(()=>w.print(),300);
 }
 
 // ============================================================
