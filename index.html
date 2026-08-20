@@ -1561,8 +1561,8 @@ function pageHqScanLog(){
   rows.sort((a,b)=>b.ts.localeCompare(a.ts));
   const pillMap={ok:'p-done',earlier:'p-process',blocked:'p-cancel',expired:'p-cancel',notfound:'p-pending'};
   const labelMap={ok:'Success',earlier:'Received Early',blocked:'Blocked',expired:'Expired',notfound:'Not Found'};
-  const actionLabelMap={pick:'Picking',grn:'GRN',stocktake:'Stocktake',adjustment:'Adjustment'};
-  const actionPillMap={pick:'p-process',grn:'p-done',stocktake:'p-process',adjustment:'p-new'};
+  const actionLabelMap={pick:'Picking',grn:'GRN',stocktake:'Stocktake',adjustment:'Adjustment',reversal:'Reversal'};
+  const actionPillMap={pick:'p-process',grn:'p-done',stocktake:'p-process',adjustment:'p-new',reversal:'p-cancel'};
   return `<div class="page-head"><h2>📋 Scan Log</h2><p>Audit record of all batch scan attempts — for GDPMD compliance</p></div>
 <div class="card">
   <div class="card-h">
@@ -1719,7 +1719,7 @@ function renderStocktakeReview(st){
   <div class="kpi kn"><div class="lbl">Date</div><div class="val" style="font-size:20px">${st.date}</div><div class="sub">By ${st.by||'—'}</div></div>
   <div class="kpi ko"><div class="lbl">Batches Counted</div><div class="val">${counted}/${st.lines.length}</div></div>
   <div class="kpi kr"><div class="lbl">Variances</div><div class="val">${varLines.length}</div></div>
-  <div class="kpi kp"><div class="lbl">Status</div><div class="val" style="font-size:18px">${(ST_STATUS[st.status]||['',st.status])[1]}</div>${st.appliedAt?`<div class="sub">${new Date(st.appliedAt).toLocaleString('en-MY')}</div>`:''}</div>
+  <div class="kpi kp"><div class="lbl">Status</div><div class="val" style="font-size:18px">${(ST_STATUS[st.status]||['',st.status])[1]}</div>${st.appliedAt?`<div class="sub">${new Date(st.appliedAt).toLocaleString('en-MY')}</div>`:''}${st.reopenCount?`<div class="sub" style="color:var(--orange)">Re-opened ${st.reopenCount}× · last by ${st.reopenBy||'—'}</div>`:''}</div>
   <div class="kpi kn"><div class="lbl">Net Variance Value</div><div class="val" style="color:${netCol}">${fmtRM(netVal)}</div><div class="sub">At cost (supplier price)</div></div>
   <div class="kpi kr"><div class="lbl">Shortage Value</div><div class="val" style="color:var(--red)">${fmtRM(shortVal)}</div><div class="sub">Loss at cost</div></div>
   <div class="kpi ko"><div class="lbl">Overage Value</div><div class="val" style="color:var(--orange)">${fmtRM(overVal)}</div><div class="sub">Excess at cost</div></div>
@@ -1728,8 +1728,10 @@ function renderStocktakeReview(st){
   <div class="card-h"><h3>Variance Review</h3>
     <div style="display:flex;align-items:center;gap:8px">
       <button class="btn btn-ghost btn-sm" onclick="printStocktakeReport('${st.id}')">Print Report</button>
+      ${st.status==='pending_review'?`<button class="btn btn-ghost btn-sm" onclick="window._stId='${st.id}';navTo('hq-stocktake-count')">Edit Counts</button>`:''}
       ${st.status==='pending_review'&&varLines.length?`<button class="btn btn-primary btn-sm" onclick="applyStocktake('${st.id}')">Apply All Adjustments</button>`:''}
       ${st.status==='applied'?`<span class="pill p-done">Applied by ${st.appliedBy||'—'}</span>`:''}
+      ${st.status==='applied'?`<button class="btn btn-ghost btn-sm" onclick="reopenStocktake('${st.id}')">Re-open / Correct</button>`:''}
     </div>
   </div>
   <div class="tbl-wrap"><table>
@@ -1877,9 +1879,40 @@ async function applyStocktake(stId){
     });
     st.status='applied'; st.appliedBy=SESSION?.name||'';
     st.appliedAt=new Date().toISOString();
+    st.applyCount=(st.applyCount||0)+1;
+    st.lastAppliedAt=new Date().toISOString();
     await saveBatches(); await saveProducts(); await saveStocktakes();
     navTo('hq-stocktake'); toast('✓ Adjustment applied');
   });
+}
+
+async function reopenStocktake(stId){
+  const st=STOCKTAKES.find(x=>x.id===stId);
+  if(!st||st.status!=='applied')return;
+  showConfirm('Re-open Stocktake',
+    'This will REVERSE the applied adjustments (batch quantities return to their pre-apply values) and re-open the stocktake for correction. All changes are recorded. Continue?',
+    'Yes, Re-open', async()=>{
+      // Reverse: pulangkan batch qty ke sysQty asal
+      for(const ln of st.lines){
+        if(ln.physQty!=null && ln.physQty!==ln.sysQty){
+          const b=BATCHES.find(x=>x.id===ln.batchId);
+          if(b){ b.qty=ln.sysQty; }
+          await logScan('reversal',ln.batchNo,ln.pid,ln.batchNo,'ok',st.id);
+        }
+      }
+      // selaraskan p.stock
+      PRODUCTS.forEach(p=>{
+        const sum=BATCHES.filter(b=>b.pid===p.id).reduce((s,b)=>s+b.qty,0);
+        if(BATCHES.some(b=>b.pid===p.id)) p.stock=sum;
+      });
+      st.status='pending_review';
+      st.reopenCount=(st.reopenCount||0)+1;
+      st.lastReopenAt=new Date().toISOString();
+      st.reopenBy=SESSION?.name||'';
+      await saveBatches(); await saveProducts(); await saveStocktakes();
+      window._stReview=st.id; navTo('hq-stocktake');
+      toast('✓ Stocktake re-opened — batches reverted, ready for correction');
+    });
 }
 
 // ============================================================
