@@ -717,7 +717,7 @@ async function resetDemoData(){
     'Yes, Reset',async()=>{
       const keys=['oh_products','oh_pos','oh_grns','oh_batches',
         'oh_scanlog','oh_suppliers','oh_categories',
-        'oh_b2b_orders','oh_b2c_orders','oh_stocktakes'];
+        'oh_b2b_orders','oh_b2c_orders','oh_stocktakes','oh_doc_counter'];
       // kumpul juga semua cart per-user
       try{
         for(let i=0;i<localStorage.length;i++){
@@ -1918,6 +1918,7 @@ function pageHqB2bOrders(){
             <button class="btn btn-ghost btn-xs" onclick="viewB2bOrder('${o.id}')">View</button>
             ${o.status==='new'?`<button class="btn btn-primary btn-xs" onclick="updateB2bStatus('${o.id}','process')">Process</button>`:''}
             ${o.status==='process'?`<button class="btn btn-green btn-xs" onclick="updateB2bStatus('${o.id}','done')">Complete</button>`:''}
+            ${(o.status==='process'||o.status==='done')?`<button class="btn btn-ghost btn-xs" onclick="printDO('${o.id}')" title="Cetak Delivery Order">🖨️ DO</button><button class="btn btn-ghost btn-xs" onclick="printB2bInvoice('${o.id}')" title="Cetak Invois">🖨️ Invois</button>`:''}
           </div>
         </td>
       </tr>`).join(''):`<tr><td colspan="7" class="empty-state">No orders</td></tr>`}
@@ -1952,6 +1953,7 @@ function viewB2bOrder(id){
 </tbody></table>
 <div class="dlg-footer">
   <button class="btn btn-ghost" onclick="closeDlg()">Close</button>
+  ${(o.status==='process'||o.status==='done')?`<button class="btn btn-ghost" onclick="printDO('${id}')">🖨️ Cetak DO</button><button class="btn btn-ghost" onclick="printB2bInvoice('${id}')">🖨️ Cetak Invois</button>`:''}
   ${o.status==='new'?`<button class="btn btn-primary" onclick="updateB2bStatus('${id}','process');closeDlg()">Process Order</button>`:''}
   ${o.status==='process'?`<button class="btn btn-green" onclick="updateB2bStatus('${id}','done');closeDlg()">Mark Completed</button>`:''}
 </div>`,true);
@@ -2080,6 +2082,7 @@ async function confirmB2bProcess(id){
 
 async function processB2bFEFO(o,confirmedAllocs){
   if(o.status==='backorder'){toast('❌ Order has backordered items — release them first');return;}
+  const allocByPid={}; // pid -> [{batchNo,expiry,take}]
   if(confirmedAllocs&&Object.keys(confirmedAllocs).length){
     for(const bid of Object.keys(confirmedAllocs)){
       const a=confirmedAllocs[bid];
@@ -2087,16 +2090,20 @@ async function processB2bFEFO(o,confirmedAllocs){
       if(b)b.qty-=a.take;
       const p=PRODUCTS.find(x=>x.id===a.pid);
       if(p)p.stock=totalStock(a.pid);
+      (allocByPid[a.pid]=allocByPid[a.pid]||[]).push({batchNo:a.batchNo,expiry:a.expiry,take:a.take});
     }
   }else{
     for(const i of o.items){
       const alloc=allocateFEFO(i.pid,i.qty);
       if(!alloc){toast('❌ Insufficient batch stock for '+i.pid);return;}
-      for(const a of alloc){const b=BATCHES.find(x=>x.id===a.batchId);if(b)b.qty-=a.take;}
+      for(const a of alloc){const b=BATCHES.find(x=>x.id===a.batchId);if(b)b.qty-=a.take;(allocByPid[i.pid]=allocByPid[i.pid]||[]).push({batchNo:a.batchNo,expiry:a.expiry,take:a.take});}
       const p=PRODUCTS.find(x=>x.id===i.pid);
       if(p)p.stock=totalStock(i.pid);
     }
   }
+  recordItemBatches(o,allocByPid);
+  if(!o.sellerOrg) o.sellerOrg=SESSION?.org||ACCOUNTS.hq?.org;
+  await ensureDocNumbers(o); // jana No. DO & No. Invois sekali sahaja
   o.status='done';
   await Promise.all([saveB2BOrders(),saveProducts(),saveBatches()]);
   buildSidebar();
@@ -2553,6 +2560,180 @@ td{padding:8px 10px;border:1px solid #dde3ee;vertical-align:middle}
   <div class="sig"><div class="sig-line"></div><div>Approved by</div></div>
   <div class="sig"><div class="sig-line"></div><div>Received by (Supplier)</div></div>
 </div>
+<script>window.onload=function(){window.print();window.onafterprint=function(){window.close();}}<\/script>
+</body></html>`);
+  w.document.close();
+}
+
+// ============================================================
+// B2B Delivery Order (DO) + Invois — nombor auto-jana & cetak
+// ============================================================
+// Maklumat syarikat HQ (penjual) — placeholder untuk cetakan
+const HQ_DOC_INFO={
+  address:'No. 1, Jalan Perindustrian 4/2, Seksyen 4, 40000 Shah Alam, Selangor',
+  phone:'03-1234 5678',
+  ssm:'No. SSM: 201901000000 (1234567-A)',
+};
+function hqDocName(o){return o.sellerOrg||ACCOUNTS.hq?.org||'OrcaHub';}
+
+// Kaunter dokumen dikongsi DO & Invois (satu jujukan nombor).
+// Baca segar dari STORE setiap kali supaya tiada nombor pendua antara tab.
+async function nextDocSeq(){
+  let c=null;
+  try{const raw=await STORE.get('oh_doc_counter');c=raw?JSON.parse(raw):null;}catch(e){c=null;}
+  const yr=new Date().getFullYear();
+  if(!c||c.year!==yr)c={year:yr,seq:0};
+  c.seq++;
+  await STORE.set('oh_doc_counter',JSON.stringify(c));
+  return {year:yr,seq:c.seq};
+}
+// Jana & simpan No. DO / No. Invois pada order SEKALI sahaja.
+// Pulangkan true jika baru dijana (perlu simpan order).
+async function ensureDocNumbers(o){
+  if(o.doNo&&o.invNo){
+    if(!o.docDate){o.docDate=today();return true;}
+    return false;
+  }
+  const n=await nextDocSeq();
+  const pad=String(n.seq).padStart(4,'0');
+  o.doNo=o.doNo||`DO-${n.year}-${pad}`;
+  o.invNo=o.invNo||`INV-${n.year}-${pad}`;
+  o.docDate=o.docDate||today();
+  if(!o.sellerOrg&&SESSION?.role==='hq')o.sellerOrg=SESSION.org;
+  return true;
+}
+// Simpan batchNo + expiry setiap item order (untuk paparan DO).
+function recordItemBatches(o,allocByPid){
+  for(const i of o.items){
+    const list=(allocByPid&&allocByPid[i.pid])||[];
+    if(list.length){
+      list.sort((a,b)=>String(a.expiry).localeCompare(String(b.expiry)));
+      i.batchNo=list.map(a=>a.batchNo).join(', ');
+      i.expiry=list.map(a=>a.expiry).join(', ');
+      i.batches=list.map(a=>({batchNo:a.batchNo,expiry:a.expiry,take:a.take}));
+    }else{
+      if(!i.batchNo)i.batchNo='';
+      if(!i.expiry)i.expiry='';
+    }
+  }
+}
+function docPrintCSS(){
+  return `*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;color:#111;background:#fff;padding:40px;font-size:13px}
+.doc-head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #111;padding-bottom:14px;margin-bottom:18px}
+.co-name{font-size:19px;font-weight:700}
+.co-meta{font-size:11px;color:#555;line-height:1.55;margin-top:3px;max-width:340px}
+.doc-title{font-size:24px;font-weight:800;letter-spacing:.06em;text-align:right;color:#111}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin-bottom:20px;font-size:12.5px;line-height:1.5}
+.grid b{color:#555;font-weight:600}
+table{width:100%;border-collapse:collapse;margin-bottom:16px}
+th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;padding:8px 9px;background:#f4f5f8;border:1px solid #cdd5e3}
+td{padding:8px 9px;border:1px solid #cdd5e3;vertical-align:middle;font-size:12px}
+.total-row{background:#f4f5f8;font-weight:700}
+.summary{margin-left:auto;width:280px;font-size:13px;margin-bottom:20px}
+.summary td{border:none;padding:4px 6px}
+.summary .g{font-size:16px;font-weight:800;border-top:2px solid #111}
+.note{font-size:11.5px;color:#555;margin:14px 0;padding:9px 12px;background:#f7f8fa;border-left:3px solid #888}
+.terms{font-size:12px;margin:10px 0 18px}
+.footer{margin-top:40px;display:flex;justify-content:space-between;gap:30px}
+.sig{text-align:center;width:230px}
+.sig-line{border-bottom:1px solid #555;margin-bottom:6px;height:44px}
+.thanks{text-align:center;font-size:12px;color:#555;margin-top:34px;padding-top:12px;border-top:1px dashed #bbb}
+@media print{body{padding:0}button{display:none}}`;
+}
+// ---- Cetak Delivery Order (tanpa harga, ada batch) ----
+async function printDO(id){
+  const o=B2B_ORDERS.find(x=>x.id===id);if(!o)return;
+  const w=window.open('','_blank','width=794,height=1123');
+  if(!w)return;
+  if(await ensureDocNumbers(o))await saveB2BOrders();
+  const rows=o.items.map((i,idx)=>{
+    const pr=PRODUCTS.find(p=>p.id===i.pid)||{};
+    return `<tr>
+      <td style="text-align:center">${idx+1}</td>
+      <td>${i.pid}</td>
+      <td>${pname(i.pid)}</td>
+      <td>${i.batchNo||'-'}</td>
+      <td>${i.expiry||'-'}</td>
+      <td style="text-align:center">${pr.unit||'-'}</td>
+      <td style="text-align:center">${i.qty}</td>
+    </tr>`;}).join('');
+  const totalQty=o.items.reduce((s,i)=>s+i.qty,0);
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>DO ${o.doNo}</title>
+<style>${docPrintCSS()}</style></head><body>
+<div class="doc-head">
+  <div><div class="co-name">${hqDocName(o)}</div>
+    <div class="co-meta">${HQ_DOC_INFO.address}<br>Tel: ${HQ_DOC_INFO.phone}</div></div>
+  <div class="doc-title">DELIVERY ORDER</div>
+</div>
+<div class="grid">
+  <div><b>No. DO:</b> <strong>${o.doNo}</strong><br><b>Rujukan Order:</b> ${o.id}</div>
+  <div><b>Tarikh:</b> ${o.docDate||today()}<br><b>Hantar Kepada:</b> <strong>${o.branch}</strong></div>
+</div>
+<table>
+  <thead><tr>
+    <th style="width:38px;text-align:center">Bil</th><th style="width:70px">Kod</th><th>Nama Produk</th>
+    <th style="width:120px">No. Batch</th><th style="width:100px">Tarikh Luput</th>
+    <th style="width:60px;text-align:center">UOM</th><th style="width:55px;text-align:center">Qty</th>
+  </tr></thead>
+  <tbody>${rows}
+    <tr class="total-row"><td colspan="6" style="text-align:right">JUMLAH KUANTITI</td><td style="text-align:center">${totalQty}</td></tr>
+  </tbody>
+</table>
+<div class="note">📋 Sila semak barang semasa penerimaan.</div>
+<div class="footer">
+  <div class="sig"><div class="sig-line"></div><div>Dihantar Oleh</div></div>
+  <div class="sig"><div class="sig-line"></div><div>Diterima Oleh</div></div>
+</div>
+<script>window.onload=function(){window.print();window.onafterprint=function(){window.close();}}<\/script>
+</body></html>`);
+  w.document.close();
+}
+// ---- Cetak Invois (dengan harga B2B) ----
+async function printB2bInvoice(id){
+  const o=B2B_ORDERS.find(x=>x.id===id);if(!o)return;
+  const w=window.open('','_blank','width=794,height=1123');
+  if(!w)return;
+  if(await ensureDocNumbers(o))await saveB2BOrders();
+  const rows=o.items.map((i,idx)=>`<tr>
+      <td style="text-align:center">${idx+1}</td>
+      <td>${i.pid}</td>
+      <td>${pname(i.pid)}</td>
+      <td style="text-align:center">${i.qty}</td>
+      <td style="text-align:right">${fmtRM(i.price)}</td>
+      <td style="text-align:right;font-weight:600">${fmtRM(i.qty*i.price)}</td>
+    </tr>`).join('');
+  const totalQty=o.items.reduce((s,i)=>s+i.qty,0);
+  const grand=orderTotal(o.items);
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Invois ${o.invNo}</title>
+<style>${docPrintCSS()}</style></head><body>
+<div class="doc-head">
+  <div><div class="co-name">${hqDocName(o)}</div>
+    <div class="co-meta">${HQ_DOC_INFO.address}<br>Tel: ${HQ_DOC_INFO.phone}<br>${HQ_DOC_INFO.ssm}</div></div>
+  <div class="doc-title">INVOIS</div>
+</div>
+<div class="grid">
+  <div><b>No. Invois:</b> <strong>${o.invNo}</strong><br><b>No. DO (Rujukan):</b> ${o.doNo||'-'}<br><b>Rujukan Order:</b> ${o.id}</div>
+  <div><b>Tarikh:</b> ${o.docDate||today()}<br><b>Bil Kepada:</b> <strong>${o.branch}</strong></div>
+</div>
+<table>
+  <thead><tr>
+    <th style="width:38px;text-align:center">Bil</th><th style="width:70px">Kod</th><th>Nama Produk</th>
+    <th style="width:55px;text-align:center">Qty</th><th style="width:100px;text-align:right">Harga Seunit</th>
+    <th style="width:110px;text-align:right">Subtotal</th>
+  </tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+<table class="summary">
+  <tr><td>Jumlah Kuantiti</td><td style="text-align:right">${totalQty} unit</td></tr>
+  <tr class="g"><td>JUMLAH BESAR</td><td style="text-align:right">${fmtRM(grand)}</td></tr>
+</table>
+<div class="terms"><b>Terma Bayaran:</b> Bayaran dalam 30 hari.</div>
+<div class="footer">
+  <div class="sig"><div class="sig-line"></div><div>Dikeluarkan Oleh</div></div>
+  <div class="sig"><div class="sig-line"></div><div>Penerima</div></div>
+</div>
+<div class="thanks">Terima kasih atas urusan anda. — ${hqDocName(o)}</div>
 <script>window.onload=function(){window.print();window.onafterprint=function(){window.close();}}<\/script>
 </body></html>`);
   w.document.close();
@@ -3516,7 +3697,7 @@ function pageB2bMyOrders(){
         <td>${o.items.length} items</td>
         <td style="font-weight:600">${fmtRM(orderTotal(o.items))}</td>
         <td>${statusPill(o.status)}${o.hasBackorder?` <span class="pill p-pending" style="font-size:10px" title="Contains backordered items">BO</span>`:''}</td>
-        <td><button class="btn btn-ghost btn-xs" onclick="viewB2bOrder('${o.id}')">View</button></td>
+        <td><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-xs" onclick="viewB2bOrder('${o.id}')">View</button>${(o.status==='process'||o.status==='done')?`<button class="btn btn-ghost btn-xs" onclick="printDO('${o.id}')" title="Cetak Delivery Order">🖨️ DO</button><button class="btn btn-ghost btn-xs" onclick="printB2bInvoice('${o.id}')" title="Cetak Invois">🖨️ Invois</button>`:''}</div></td>
       </tr>`).join(''):`<tr><td colspan="6"><div class="empty-state" style="padding:40px"><div class="empty-icon">📋</div><h4>No orders yet</h4><p>Create your first order!</p></div></td></tr>`}
     </tbody>
   </table></div>
