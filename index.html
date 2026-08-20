@@ -1318,13 +1318,13 @@ function pageSaDashboard(){
   return `<div class="page-head"><h2>🛡️ Platform Dashboard</h2><p>OrcaHub platform overview</p></div>
 <div class="kpis">
   <div class="kpi kn"><div class="lbl">Total Tenants</div><div class="val">${totalTenants}</div><div class="sub trend-up">↑ 2 this month</div></div>
-  <div class="kpi ko"><div class="lbl">MRR</div><div class="val">${fmtRM(mrr)}</div><div class="sub trend-up">↑ 12% vs last month</div></div>
+  <div class="kpi ko"><div class="lbl">MRR <span style="font-weight:400;font-size:10px;color:var(--grey)">(Monthly Recurring Revenue)</span></div><div class="val">${fmtRM(mrr)}</div><div class="sub trend-up">↑ 12% vs last month</div></div>
   <div class="kpi kg"><div class="lbl">Active Tenants</div><div class="val">${activeTenants}</div><div class="sub">${totalTenants-activeTenants} in trial</div></div>
   <div class="kpi kp"><div class="lbl">Total Users</div><div class="val">${totalUsers}</div><div class="sub">All tenants</div></div>
 </div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
   <div class="card">
-    <div class="card-h"><h3>📊 MRR by Plan</h3></div>
+    <div class="card-h"><h3>📊 MRR by Plan <span style="font-weight:400;font-size:12px;color:var(--grey)">(Monthly Recurring Revenue)</span></h3></div>
     <div class="card-body">
       <div class="bar-chart">
         ${[['Enterprise',3200,5000,'orange'],['Pro',598,5000,'navy'],['Starter',198,5000,'teal']].map(([l,v,m,c])=>`
@@ -1430,13 +1430,13 @@ function pageSaAnalytics(){
   const maxMrr=Math.max(...mrr);
   return `<div class="page-head"><h2>📊 Platform Analytics</h2><p>OrcaHub platform growth metrics</p></div>
 <div class="kpis">
-  <div class="kpi kn"><div class="lbl">ARR</div><div class="val">${fmtRM(3996*12)}</div><div class="sub trend-up">↑ 233% YoY</div></div>
+  <div class="kpi kn"><div class="lbl">ARR <span style="font-weight:400;font-size:10px;color:var(--grey)">(Annual Recurring Revenue)</span></div><div class="val">${fmtRM(3996*12)}</div><div class="sub trend-up">↑ 233% <span title="Year over Year">YoY</span></div></div>
   <div class="kpi ko"><div class="lbl">Churn Rate</div><div class="val">1.2%</div><div class="sub trend-dn">↑ 0.2% vs last month</div></div>
-  <div class="kpi kg"><div class="lbl">NPS Score</div><div class="val">72</div><div class="sub trend-up">Excellent</div></div>
-  <div class="kpi kp"><div class="lbl">ARPU</div><div class="val">${fmtRM(3996/SEED_TENANTS.length)}</div><div class="sub">Average per tenant</div></div>
+  <div class="kpi kg"><div class="lbl">NPS Score <span style="font-weight:400;font-size:10px;color:var(--grey)">(Net Promoter Score)</span></div><div class="val">72</div><div class="sub trend-up">Excellent</div></div>
+  <div class="kpi kp"><div class="lbl">ARPU <span style="font-weight:400;font-size:10px;color:var(--grey)">(Avg Revenue Per User)</span></div><div class="val">${fmtRM(3996/SEED_TENANTS.length)}</div><div class="sub">Average per tenant</div></div>
 </div>
 <div class="card">
-  <div class="card-h"><h3>📈 MRR Growth (2026)</h3></div>
+  <div class="card-h"><h3>📈 MRR Growth (2026) <span style="font-weight:400;font-size:12px;color:var(--grey)">(Monthly Recurring Revenue)</span></h3></div>
   <div class="card-body">
     <div style="display:flex;align-items:flex-end;gap:12px;height:160px;padding-top:10px">
       ${mrr.map((v,i)=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px">
@@ -1610,7 +1610,7 @@ function pageHqBatches(){
   const statusColorMap={expired:'var(--red)',critical:'var(--orange)',warning:'#92400e',ok:'var(--green)'};
   const statusLabelMap={expired:'Expired',critical:'Critical',warning:'Warning',ok:'OK'};
 
-  return `<div class="page-head"><h2>🗓️ Batch & Expiry</h2><p>FEFO batch tracking — First Expired First Out</p></div>
+  return `<div class="page-head"><h2 title="FEFO — First Expired First Out">🗓️ Batch & Expiry</h2><p>FEFO batch tracking — First Expired First Out</p></div>
 <div class="kpis">
   <div class="kpi kn"><div class="lbl">Total Batches</div><div class="val">${total}</div><div class="sub">In system</div></div>
   <div class="kpi ko"><div class="lbl">Critical Batches</div><div class="val">${critical}</div><div class="sub">< 90 days</div></div>
@@ -2427,7 +2427,7 @@ async function createPO(){
 }
 
 function pageHqPO(){
-  return `<div class="page-head"><h2>📄 Purchase Orders</h2><p>POs sent to suppliers</p></div>
+  return `<div class="page-head"><h2 title="Purchase Orders — pesanan belian kepada pembekal">📄 Purchase Orders</h2><p>POs sent to suppliers</p></div>
 <div class="card">
   <div class="card-h"><h3>PO List (${POS.length})</h3>
     <button class="btn btn-primary btn-sm" onclick="showCreatePO()">+ Create New PO</button>
@@ -3095,7 +3095,7 @@ function pageHqGRN(){
   const tabs={all:'All',draft:'Draft',posted:'Completed'};
   const tabHtml=Object.entries(tabs).map(([k,v])=>`<button class="${filter===k?'on':''}" onclick="window._grnFilter='${k}';navTo('hq-grn')">${v}</button>`).join('');
   return `<div class="page-head">
-  <div><h2>✅ Goods Received Notes (GRN)</h2><p>Goods receipt records from suppliers</p></div>
+  <div><h2 title="Goods Received Note — nota terima barang">✅ Goods Received Notes (GRN)</h2><p>Goods receipt records from suppliers</p></div>
   <button class="btn btn-primary" onclick="showGrnStep1()">+ New GRN</button>
 </div>
 <div class="card">
