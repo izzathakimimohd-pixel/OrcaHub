@@ -678,6 +678,7 @@ let SCANLOG=[];
 let SUPPLIERS=[];
 let CATEGORIES=[];
 let STOCKTAKES=[];
+let CLINIC_STOCK=[];
 
 // ===== LOAD / SEED DATA =====
 async function loadData(){
@@ -706,10 +707,13 @@ async function loadData(){
     CATEGORIES=categories?JSON.parse(categories):seedCategories();
     const st=await STORE.get('oh_stocktakes');
     STOCKTAKES=st?JSON.parse(st):[];
-  }catch(e){PRODUCTS=SEED_PRODUCTS.map(x=>({...x}));BATCHES=seedBatches();SCANLOG=[];SUPPLIERS=seedSuppliers();CATEGORIES=seedCategories();STOCKTAKES=[];}
+    const cs=await STORE.get('oh_clinic_stock');
+    CLINIC_STOCK=cs?JSON.parse(cs):[];
+  }catch(e){PRODUCTS=SEED_PRODUCTS.map(x=>({...x}));BATCHES=seedBatches();SCANLOG=[];SUPPLIERS=seedSuppliers();CATEGORIES=seedCategories();STOCKTAKES=[];CLINIC_STOCK=[];}
 }
 
 async function saveStocktakes(){await STORE.set('oh_stocktakes',JSON.stringify(STOCKTAKES));}
+async function saveClinicStock(){await STORE.set('oh_clinic_stock',JSON.stringify(CLINIC_STOCK));}
 
 async function resetDemoData(){
   showConfirm('Reset Demo Data',
@@ -717,7 +721,7 @@ async function resetDemoData(){
     'Yes, Reset',async()=>{
       const keys=['oh_products','oh_pos','oh_grns','oh_batches',
         'oh_scanlog','oh_suppliers','oh_categories',
-        'oh_b2b_orders','oh_b2c_orders','oh_stocktakes','oh_doc_counter'];
+        'oh_b2b_orders','oh_b2c_orders','oh_stocktakes','oh_clinic_stock','oh_doc_counter'];
       // kumpul juga semua cart per-user
       try{
         for(let i=0;i<localStorage.length;i++){
@@ -1105,6 +1109,8 @@ const MENUS={
     {id:'b2b-shop',    ic:'🏠',label:'Dashboard'},
     {id:'b2b-order',   ic:'🛒',label:'New Order',badge:'cart'},
     {id:'b2b-myorders',ic:'📋',label:'My Orders'},
+    {id:'b2b-incoming',ic:'📥',label:'Incoming',badge:'incoming'},
+    {id:'b2b-stock',   ic:'📦',label:'My Stock'},
     {id:'settings',    ic:'⚙️',label:'Settings'},
   ],
   customer:[
@@ -1131,6 +1137,7 @@ function getBadgeCount(badge){
     if(SESSION?.role==='branch')return Object.keys(B2B_CART).length;
   }
   if(badge==='expiry')return BATCHES.filter(b=>['expired','critical'].includes(expiryStatus(b.expiry))).length;
+  if(badge==='incoming')return B2B_ORDERS.filter(o=>o.branch===SESSION.org&&o.status==='in_transit').length||'';
   return 0;
 }
 
@@ -1156,7 +1163,7 @@ function navTo(page){
   renderPage();
   const labels={'sa-dashboard':'Dashboard','sa-tenants':'Tenants','sa-plans':'Subscription Plans','sa-analytics':'Analytics',
     'hq-dashboard':'Dashboard','hq-b2b-orders':'Order B2B','hq-catalog':'Catalog','hq-batches':'Batch & Expiry','hq-scanlog':'Scan Log','hq-suppliers':'Suppliers','hq-po':'Purchase Orders','hq-grn':'GRN','hq-grn-form':'GRN Form','hq-stocktake':'Stocktake','hq-b2c-orders':'Order B2C','hq-purchase-report':'Purchase Report','hq-analytics':'Analytics',
-    'b2b-shop':'Dashboard','b2b-order':'New Order','b2b-myorders':'My Orders',
+    'b2b-shop':'Dashboard','b2b-order':'New Order','b2b-myorders':'My Orders','b2b-incoming':'Incoming Deliveries','b2b-stock':'My Stock',
     'b2c-store':'Store','b2c-cart':'Cart','b2c-orders':'My Orders',
     'sup-dashboard':'Dashboard','sup-products':'My Products','sup-po':'Incoming PO','sup-delivery':'Delivery',
     'settings':'Settings'};
@@ -1264,6 +1271,8 @@ function renderPage(){
   else if(pg==='b2b-shop')    c.innerHTML=pageB2bDashboard();
   else if(pg==='b2b-order'){  c.innerHTML=pageB2bOrder();bindB2bOrder();}
   else if(pg==='b2b-myorders')c.innerHTML=pageB2bMyOrders();
+  else if(pg==='b2b-incoming')c.innerHTML=pageB2bIncoming();
+  else if(pg==='b2b-stock')   c.innerHTML=pageB2bStock();
   else if(pg==='b2c-store'){  c.innerHTML=pageB2cStore();bindB2cStore();}
   else if(pg==='b2c-cart')    c.innerHTML=pageB2cCart();
   else if(pg==='b2c-orders')  c.innerHTML=pageB2cMyOrders();
@@ -1919,8 +1928,9 @@ async function reopenStocktake(stId){
 // STEP 4: HQ B2B Orders, Catalog, Suppliers, PO, GRN
 // ============================================================
 function statusPill(s){
-  const map={new:'p-new New',process:'p-process Processing',done:'p-done Completed',cancel:'p-cancel Cancelled',pending:'p-pending Not Sent',confirmed:'p-process Awaiting Goods',partial:'p-new Partial Receipt',delivered:'p-done Completed',backorder:'p-pending Backorder'};
-  const [cls,lbl]=(map[s]||'p-pending '+s).split(' ');
+  const map={new:'p-new New',process:'p-process Processing',in_transit:'p-process In Transit',done:'p-done Completed',cancel:'p-cancel Cancelled',pending:'p-pending Not Sent',confirmed:'p-process Awaiting Goods',partial:'p-new Partial Receipt',delivered:'p-done Completed',backorder:'p-pending Backorder'};
+  const [cls,...rest]=(map[s]||'p-pending '+s).split(' ');
+  const lbl=rest.join(' ');
   return `<span class="pill ${cls}">${lbl}</span>`;
 }
 
@@ -1951,7 +1961,7 @@ function pageHqB2bOrders(){
             <button class="btn btn-ghost btn-xs" onclick="viewB2bOrder('${o.id}')">View</button>
             ${o.status==='new'?`<button class="btn btn-primary btn-xs" onclick="updateB2bStatus('${o.id}','process')">Process</button>`:''}
             ${o.status==='process'?`<button class="btn btn-green btn-xs" onclick="updateB2bStatus('${o.id}','done')">Complete</button>`:''}
-            ${(o.status==='process'||o.status==='done')?`<button class="btn btn-ghost btn-xs" onclick="printDO('${o.id}')" title="Cetak Delivery Order">🖨️ DO</button><button class="btn btn-ghost btn-xs" onclick="printB2bInvoice('${o.id}')" title="Cetak Invois">🖨️ Invois</button>`:''}
+            ${(o.status==='process'||o.status==='in_transit'||o.status==='done')?`<button class="btn btn-ghost btn-xs" onclick="printDO('${o.id}')" title="Cetak Delivery Order">🖨️ DO</button><button class="btn btn-ghost btn-xs" onclick="printB2bInvoice('${o.id}')" title="Cetak Invois">🖨️ Invois</button>`:''}
           </div>
         </td>
       </tr>`).join(''):`<tr><td colspan="7" class="empty-state">No orders</td></tr>`}
@@ -1986,7 +1996,7 @@ function viewB2bOrder(id){
 </tbody></table>
 <div class="dlg-footer">
   <button class="btn btn-ghost" onclick="closeDlg()">Close</button>
-  ${(o.status==='process'||o.status==='done')?`<button class="btn btn-ghost" onclick="printDO('${id}')">🖨️ Cetak DO</button><button class="btn btn-ghost" onclick="printB2bInvoice('${id}')">🖨️ Cetak Invois</button>`:''}
+  ${(o.status==='process'||o.status==='in_transit'||o.status==='done')?`<button class="btn btn-ghost" onclick="printDO('${id}')">🖨️ Cetak DO</button><button class="btn btn-ghost" onclick="printB2bInvoice('${id}')">🖨️ Cetak Invois</button>`:''}
   ${o.status==='new'?`<button class="btn btn-primary" onclick="updateB2bStatus('${id}','process');closeDlg()">Process Order</button>`:''}
   ${o.status==='process'?`<button class="btn btn-green" onclick="updateB2bStatus('${id}','done');closeDlg()">Mark Completed</button>`:''}
 </div>`,true);
@@ -2137,11 +2147,12 @@ async function processB2bFEFO(o,confirmedAllocs){
   recordItemBatches(o,allocByPid);
   if(!o.sellerOrg) o.sellerOrg=SESSION?.org||ACCOUNTS.hq?.org;
   await ensureDocNumbers(o); // jana No. DO & No. Invois sekali sahaja
-  o.status='done';
+  o.items.forEach(i=>{ if(i.received==null) i.received=0; });
+  o.status='in_transit';
   await Promise.all([saveB2BOrders(),saveProducts(),saveBatches()]);
   buildSidebar();
   navTo('hq-b2b-orders');
-  toast(`✓ Order ${o.id} completed — FEFO stock updated`);
+  toast(`✓ Order ${o.id} shipped — awaiting clinic receipt`);
 }
 
 function pageHqCatalog(){
@@ -3730,8 +3741,122 @@ function pageB2bMyOrders(){
         <td>${o.items.length} items</td>
         <td style="font-weight:600">${fmtRM(orderTotal(o.items))}</td>
         <td>${statusPill(o.status)}${o.hasBackorder?` <span class="pill p-pending" style="font-size:10px" title="Contains backordered items">BO</span>`:''}</td>
-        <td><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-xs" onclick="viewB2bOrder('${o.id}')">View</button>${(o.status==='process'||o.status==='done')?`<button class="btn btn-ghost btn-xs" onclick="printDO('${o.id}')" title="Cetak Delivery Order">🖨️ DO</button><button class="btn btn-ghost btn-xs" onclick="printB2bInvoice('${o.id}')" title="Cetak Invois">🖨️ Invois</button>`:''}</div></td>
+        <td><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-xs" onclick="viewB2bOrder('${o.id}')">View</button>${(o.status==='process'||o.status==='in_transit'||o.status==='done')?`<button class="btn btn-ghost btn-xs" onclick="printDO('${o.id}')" title="Cetak Delivery Order">🖨️ DO</button><button class="btn btn-ghost btn-xs" onclick="printB2bInvoice('${o.id}')" title="Cetak Invois">🖨️ Invois</button>`:''}</div></td>
       </tr>`).join(''):`<tr><td colspan="6"><div class="empty-state" style="padding:40px"><div class="empty-icon">📋</div><h4>No orders yet</h4><p>Create your first order!</p></div></td></tr>`}
+    </tbody>
+  </table></div>
+</div>`;
+}
+
+// ============================================================
+// CLINIC INVENTORY — Incoming Deliveries + My Stock (branch role)
+// ============================================================
+function pageB2bIncoming(){
+  const incoming=B2B_ORDERS.filter(o=>o.branch===SESSION.org&&o.status==='in_transit');
+  const head=`<div class="page-head"><h2>📥 Incoming Deliveries</h2><p>Confirm receipt of goods from HQ</p></div>`;
+  if(!incoming.length){
+    return head+`<div class="card"><div class="card-body"><div class="empty-state" style="padding:40px"><div class="empty-icon">📥</div><h4>No incoming deliveries</h4><p>Goods shipped by HQ will appear here for receipt confirmation.</p></div></div></div>`;
+  }
+  return head+incoming.map(o=>`
+<div class="card">
+  <div class="card-h"><h3>${o.id}</h3><span style="font-size:12px;color:var(--grey)">Date: ${o.date} · ${statusPill(o.status)}</span></div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Product</th><th>Ordered Qty</th><th>Already Received</th><th>Batch / Expiry (from HQ)</th><th>Receive Now</th></tr></thead>
+    <tbody>
+      ${o.items.map((it,idx)=>{
+        const already=it.received||0;
+        const remaining=it.qty-already;
+        const batchInfo=(it.batches&&it.batches.length)
+          ? it.batches.map(b=>`<span style="font-family:monospace">${b.batchNo||'—'}</span> <span style="color:var(--grey)">(${b.expiry||'—'})</span>`).join('<br>')
+          : (it.batchNo||it.expiry?`<span style="font-family:monospace">${it.batchNo||'—'}</span> <span style="color:var(--grey)">(${it.expiry||'—'})</span>`:'<span style="color:var(--grey)">—</span>');
+        return `<tr>
+          <td style="font-weight:600">${pname(it.pid)}</td>
+          <td>${it.qty}</td>
+          <td>${already}</td>
+          <td style="font-size:12px">${batchInfo}</td>
+          <td>${remaining>0
+            ?`<input type="number" min="0" max="${remaining}" value="${remaining}" id="rcv_${o.id}_${idx}" style="width:90px;padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink)">`
+            :`<span class="pill p-done">Fully received</span>`}</td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table></div>
+  <div class="card-body" style="border-top:1px solid var(--line)">
+    <button class="btn btn-primary" onclick="confirmClinicReceipt('${o.id}')">Confirm Receipt</button>
+  </div>
+</div>`).join('');
+}
+
+async function confirmClinicReceipt(orderId){
+  const o=B2B_ORDERS.find(x=>x.id===orderId);if(!o)return;
+  let anyReceived=false;
+  o.items.forEach((it,idx)=>{
+    const el=document.getElementById('rcv_'+orderId+'_'+idx);
+    const rcv=el?parseInt(el.value)||0:0;
+    if(rcv>0){
+      const maxCanReceive=it.qty-(it.received||0);
+      const actual=Math.min(rcv,maxCanReceive);
+      if(actual>0){
+        // agih actual ikut batch HQ (i.batches) — berturut ikut urutan batch
+        let rem=actual;
+        (it.batches||[{batchNo:it.batchNo||'',expiry:it.expiry||'',take:actual}]).forEach(b=>{
+          if(rem<=0)return;
+          const takeFromBatch=Math.min(rem, b.take||actual);
+          // cari baris stok klinik sedia ada (clinic+pid+batchNo) atau cipta baru
+          let row=CLINIC_STOCK.find(r=>r.clinic===SESSION.org&&r.pid===it.pid&&r.batchNo===b.batchNo);
+          if(row){row.qty+=takeFromBatch;}
+          else{CLINIC_STOCK.push({id:uid('CS'),clinic:SESSION.org,pid:it.pid,batchNo:b.batchNo,expiry:b.expiry,qty:takeFromBatch,orderId:o.id,receivedAt:new Date().toISOString(),receivedBy:SESSION?.name||''});}
+          rem-=takeFromBatch;
+        });
+        it.received=(it.received||0)+actual;
+        anyReceived=true;
+      }
+    }
+  });
+  if(!anyReceived){toast('❌ Enter quantity to receive');return;}
+  // jika semua item dah terima penuh → order 'done'
+  const allDone=o.items.every(it=>(it.received||0)>=it.qty);
+  if(allDone)o.status='done';
+  await Promise.all([saveB2BOrders(),saveClinicStock()]);
+  buildSidebar();navTo('b2b-incoming');
+  toast(allDone?'✓ All items received — order complete':'✓ Partial receipt recorded');
+}
+
+function pageB2bStock(){
+  const rows=CLINIC_STOCK.filter(r=>r.clinic===SESSION.org&&r.qty>0)
+    .slice().sort((a,b)=>String(a.expiry).localeCompare(String(b.expiry)));
+  const head=`<div class="page-head"><h2>📦 My Stock</h2><p>Your clinic inventory by batch</p></div>`;
+  const totalItems=rows.length;
+  const totalUnits=rows.reduce((s,r)=>s+r.qty,0);
+  const expiringSoon=rows.filter(r=>['expired','critical'].includes(expiryStatus(r.expiry))).length;
+  const statusColorMap={expired:'var(--red)',critical:'var(--orange)',warning:'#92400e',ok:'var(--green)'};
+  const statusLabelMap={expired:'Expired',critical:'Critical',warning:'Warning',ok:'OK'};
+  const kpis=`<div class="kpis">
+  <div class="kpi kn"><div class="lbl">Total Items</div><div class="val">${totalItems}</div><div class="sub">Batch lines in stock</div></div>
+  <div class="kpi ko"><div class="lbl">Total Units</div><div class="val">${totalUnits}</div><div class="sub">Across all batches</div></div>
+  <div class="kpi kr"><div class="lbl">Expiring Soon</div><div class="val">${expiringSoon}</div><div class="sub">Critical + expired</div></div>
+</div>`;
+  if(!rows.length){
+    return head+kpis+`<div class="card"><div class="card-body"><div class="empty-state" style="padding:40px"><div class="empty-icon">📦</div><h4>No stock yet</h4><p>No stock yet. Confirm incoming deliveries to add stock.</p></div></div></div>`;
+  }
+  return head+kpis+`<div class="card">
+  <div class="card-h"><h3>Clinic Inventory</h3><span style="font-size:12px;color:var(--grey)">FEFO view · earliest expiry first</span></div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Product</th><th>Batch No</th><th>Expiry</th><th>Days Left</th><th>Qty</th><th>Status</th></tr></thead>
+    <tbody>
+      ${rows.map(r=>{
+        const st=r.expiry?expiryStatus(r.expiry):'ok';
+        const days=r.expiry?daysToExpiry(r.expiry):null;
+        const rowBg=st==='expired'?'background:var(--red-l)':st==='critical'?'background:var(--orange-l)':st==='warning'?'background:#fffbeb':'';
+        return `<tr style="${rowBg}">
+          <td style="font-weight:600">${pname(r.pid)}</td>
+          <td style="font-family:monospace">${r.batchNo||'—'}</td>
+          <td style="font-weight:600">${r.expiry||'—'}</td>
+          <td style="color:${statusColorMap[st]};font-weight:700">${r.expiry?(days<0?'Expired '+Math.abs(days)+'d':days+'d'):'—'}</td>
+          <td><span class="pill ${r.qty<=0?'p-cancel':r.qty<50?'p-new':'p-done'}">${r.qty} unit</span></td>
+          <td><span class="pill ${st==='expired'?'p-cancel':st==='critical'?'p-new':st==='warning'?'p-process':'p-done'}">${statusLabelMap[st]}</span></td>
+        </tr>`;
+      }).join('')}
     </tbody>
   </table></div>
 </div>`;
