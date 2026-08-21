@@ -3747,7 +3747,7 @@ function pageB2bMyOrders(){
         <td style="font-weight:700">${o.id}</td><td>${o.date}</td>
         <td>${o.items.length} items</td>
         <td style="font-weight:600">${fmtRM(orderTotal(o.items))}</td>
-        <td>${statusPill(o.status)}${o.hasBackorder?` <span class="pill p-pending" style="font-size:10px" title="Contains backordered items">BO</span>`:''}${o.isReship?` <span class="pill p-process" style="font-size:10px" title="Reship of ${o.parentOrderId||''}">Reship</span>`:''}${o.hasOutstanding?` <span class="pill p-pending" style="font-size:10px" title="Some items short-received, pending reship">Partial</span>`:''}</td>
+        <td>${statusPill(o.status)}${o.hasBackorder?` <span class="pill p-pending" style="font-size:10px" title="Contains backordered items">BO</span>`:''}${o.isReship?` <span class="pill p-process" style="font-size:10px" title="Reship of ${o.parentOrderId||''}">Reship</span>`:''}${o.hasOutstanding?` <span class="pill p-pending" style="font-size:10px" title="Some items short-received, pending reship">Partial</span>`:o.wasReshipped?` <span class="pill p-process" style="font-size:10px" title="Balance reshipped separately">Reshipped</span>`:''}</td>
         <td><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-xs" onclick="viewB2bOrder('${o.id}')">View</button>${(o.status==='process'||o.status==='in_transit'||o.status==='done')?`<button class="btn btn-ghost btn-xs" onclick="printDO('${o.id}')" title="Cetak Delivery Order">🖨️ DO</button><button class="btn btn-ghost btn-xs" onclick="printB2bInvoice('${o.id}')" title="Cetak Invois">🖨️ Invois</button>`:''}${(()=>{const rcs=RECEIPTS.filter(r=>r.parentOrderId===(o.parentOrderId||o.id)||r.orderId===o.id);return o.status==='done'&&rcs.length?`<button class="btn btn-ghost btn-xs" onclick="viewReceipt('${rcs[rcs.length-1].id}')" title="View latest receipt">🧾 Receipt</button>`:'';})()}</div></td>
       </tr>`).join(''):`<tr><td colspan="6"><div class="empty-state" style="padding:40px"><div class="empty-icon">📋</div><h4>No orders yet</h4><p>Create your first order!</p></div></td></tr>`}
     </tbody>
@@ -3937,6 +3937,8 @@ async function reshipOutstanding(orderId){
       B2B_ORDERS.push(ship);
       // tanda induk dah selesai reship (buang pending)
       o.reshipPending=false;
+      o.hasOutstanding=false;      // baki dah jadi tanggungjawab reship
+      o.wasReshipped=true;         // tanda order ini pernah di-reship
       // kosongkan outstanding pada induk (dah dipindah ke ship baru)
       o.items.forEach(i=>{ if(i.outstanding){ i.reshippedIn=newId; i.outstanding=0; } });
       await saveB2BOrders();buildSidebar();navTo('hq-b2b-orders');
