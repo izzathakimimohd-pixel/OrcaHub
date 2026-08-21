@@ -507,7 +507,8 @@ tbody tr:hover td{background:var(--sand)}
       <button class="role-btn" id="rb-hq" onclick="pickAuthRole('hq')"><span class="ric">🏢</span>HQ / Admin</button>
       <button class="role-btn" id="rb-branch" onclick="pickAuthRole('branch')"><span class="ric">🏪</span>Branch / Clinic</button>
       <button class="role-btn" id="rb-customer" onclick="pickAuthRole('customer')"><span class="ric">👤</span>Customer B2C</button>
-      <button class="role-btn" id="rb-supplier" onclick="pickAuthRole('supplier')" style="grid-column:span 2"><span class="ric">🚚</span>Supplier</button>
+      <button class="role-btn" id="rb-supplier" onclick="pickAuthRole('supplier')"><span class="ric">🚚</span>Supplier</button>
+      <button class="role-btn" id="rb-driver" onclick="pickAuthRole('driver')"><span class="ric">🛵</span>Logistics Driver</button>
     </div>
     <div class="demo-hint" id="demoHint">
       <b>Demo:</b> username: <b>superadmin</b> · password: <b>admin123</b>
@@ -634,6 +635,7 @@ const ACCOUNTS={
   klinik:    {pass:'klinik123',role:'branch',   name:'Nurse Sara',   org:'KDMU Bangi',plan:'pro'},
   customer:  {pass:'cust123',role:'customer',   name:'Aisha Rahman', org:'Individual',plan:'starter'},
   supplier:  {pass:'sup123', role:'supplier',   name:'David Tan',    org:'PharmaCo Supply Sdn Bhd',plan:'pro'},
+  driver:    {pass:'driver123',role:'driver',   name:'Pak Mat',      org:'BrilliantPharma Sdn Bhd',plan:'pro'},
 };
 
 // ===== DEMO PRODUCTS =====
@@ -901,6 +903,7 @@ function pickAuthRole(r){
     branch:'<b>Demo:</b> username: <b>klinik</b> · password: <b>klinik123</b><br><span style="color:var(--orange);font-weight:600">⚠️ Demo account only — do not use real data</span>',
     customer:'<b>Demo:</b> username: <b>customer</b> · password: <b>cust123</b><br><span style="color:var(--orange);font-weight:600">⚠️ Demo account only — do not use real data</span>',
     supplier:'<b>Demo:</b> username: <b>supplier</b> · password: <b>sup123</b><br><span style="color:var(--orange);font-weight:600">⚠️ Demo account only — do not use real data</span>',
+    driver:'<b>Demo:</b> username: <b>driver</b> · password: <b>driver123</b><br><span style="color:var(--orange);font-weight:600">⚠️ Demo account only — do not use real data</span>',
   };
   if(DEMO_MODE){
     document.getElementById('demoHint').innerHTML=hints[r]||'';
@@ -1048,6 +1051,7 @@ function defaultPage(){
   if(r==='branch')return 'b2b-shop';
   if(r==='customer')return 'b2c-store';
   if(r==='supplier')return 'sup-dashboard';
+  if(r==='driver')return 'driver-dashboard';
   return 'dashboard';
 }
 
@@ -1060,8 +1064,8 @@ function updateTopbar(){
   document.getElementById('umName').textContent=s.name;
   document.getElementById('umOrg').textContent=s.org;
   const badge=document.getElementById('tbBadge');
-  const labels={superadmin:'Super Admin',hq:'HQ Admin',branch:'Branch',customer:'Customer',supplier:'Supplier'};
-  const classes={superadmin:'sa',hq:'hq',branch:'br',customer:'cu',supplier:'su'};
+  const labels={superadmin:'Super Admin',hq:'HQ Admin',branch:'Branch',customer:'Customer',supplier:'Supplier',driver:'Driver'};
+  const classes={superadmin:'sa',hq:'hq',branch:'br',customer:'cu',supplier:'su',driver:'su'};
   badge.textContent=labels[s.role]||s.role;
   badge.className='tb-badge '+(classes[s.role]||'');
   const nd=document.getElementById('notifDot');
@@ -1096,6 +1100,7 @@ const MENUS={
     {sect:'B2B Procurement'},
     {id:'hq-b2b-orders',ic:'📋',label:'B2B Orders',badge:'b2b'},
     {id:'hq-reship',    ic:'📦',label:'Outstanding to Reship',badge:'reship'},
+    {id:'hq-logistics', ic:'🚚',label:'Logistics',badge:'logistics'},
     {id:'hq-catalog',   ic:'📦',label:'Product Catalog'},
     {id:'hq-batches',   ic:'🗓️',label:'Batch & Expiry',badge:'expiry'},
     {id:'hq-stocktake', ic:'📋',label:'Stocktake'},
@@ -1131,6 +1136,11 @@ const MENUS={
     {id:'sup-delivery', ic:'🚚',label:'Delivery'},
     {id:'settings',     ic:'⚙️',label:'Settings'},
   ],
+  driver:[
+    {sect:'Delivery'},
+    {id:'driver-dashboard',ic:'🛵',label:'My Deliveries'},
+    {id:'settings',        ic:'⚙️',label:'Settings'},
+  ],
 };
 
 function getBadgeCount(badge){
@@ -1144,6 +1154,7 @@ function getBadgeCount(badge){
   if(badge==='expiry')return BATCHES.filter(b=>['expired','critical'].includes(expiryStatus(b.expiry))).length;
   if(badge==='incoming')return B2B_ORDERS.filter(o=>o.branch===SESSION.org&&o.status==='in_transit').length||'';
   if(badge==='reship')return B2B_ORDERS.filter(o=>o.reshipPending).length||'';
+  if(badge==='logistics')return B2B_ORDERS.filter(o=>o.status==='in_transit'&&(!o.logistics||o.logistics.status!=='delivered')).length||'';
   return 0;
 }
 
@@ -1168,10 +1179,11 @@ function navTo(page){
   buildSidebar();
   renderPage();
   const labels={'sa-dashboard':'Dashboard','sa-tenants':'Tenants','sa-plans':'Subscription Plans','sa-analytics':'Analytics',
-    'hq-dashboard':'Dashboard','hq-b2b-orders':'Order B2B','hq-reship':'Outstanding to Reship','hq-catalog':'Catalog','hq-batches':'Batch & Expiry','hq-scanlog':'Scan Log','hq-suppliers':'Suppliers','hq-po':'Purchase Orders','hq-grn':'GRN','hq-grn-form':'GRN Form','hq-stocktake':'Stocktake','hq-b2c-orders':'Order B2C','hq-purchase-report':'Purchase Report','hq-analytics':'Analytics',
+    'hq-dashboard':'Dashboard','hq-b2b-orders':'Order B2B','hq-reship':'Outstanding to Reship','hq-logistics':'Logistics','hq-catalog':'Catalog','hq-batches':'Batch & Expiry','hq-scanlog':'Scan Log','hq-suppliers':'Suppliers','hq-po':'Purchase Orders','hq-grn':'GRN','hq-grn-form':'GRN Form','hq-stocktake':'Stocktake','hq-b2c-orders':'Order B2C','hq-purchase-report':'Purchase Report','hq-analytics':'Analytics',
     'b2b-shop':'Dashboard','b2b-order':'New Order','b2b-myorders':'My Orders','b2b-incoming':'Incoming Deliveries','b2b-stock':'My Stock',
     'b2c-store':'Store','b2c-cart':'Cart','b2c-orders':'My Orders',
     'sup-dashboard':'Dashboard','sup-products':'My Products','sup-po':'Incoming PO','sup-delivery':'Delivery',
+    'driver-dashboard':'My Deliveries',
     'settings':'Settings'};
   document.getElementById('breadcrumb').innerHTML=`<b>${labels[page]||page}</b>`;
 }
@@ -1263,6 +1275,8 @@ function renderPage(){
   else if(pg==='hq-dashboard')c.innerHTML=pageHqDashboard();
   else if(pg==='hq-b2b-orders')c.innerHTML=pageHqB2bOrders();
   else if(pg==='hq-reship')   c.innerHTML=pageHqReship();
+  else if(pg==='hq-logistics') c.innerHTML=pageHqLogistics();
+  else if(pg==='driver-dashboard') c.innerHTML=pageDriverDeliveries();
   else if(pg==='hq-batches')  c.innerHTML=pageHqBatches();
   else if(pg==='hq-stocktake') c.innerHTML=pageStocktake();
   else if(pg==='hq-stocktake-count'){c.innerHTML=pageStocktakeCount();focusScan('stScan');}
@@ -1941,6 +1955,20 @@ function statusPill(s){
   return `<span class="pill ${cls}">${lbl}</span>`;
 }
 
+// Logistics sub-status label (delivery layer within in_transit)
+function logisticsLabel(o){
+  const lg=o.logistics||{status:'packed'};
+  const st=lg.status||'packed';
+  if(st==='assigned') return {cls:'p-process',label:'Assigned: '+(lg.driver||'')};
+  if(st==='out')      return {cls:'p-process',label:'Out for Delivery'};
+  if(st==='delivered')return {cls:'p-done',label:'Delivered'};
+  return {cls:'p-new',label:'Packed'};
+}
+function logisticsPill(o){
+  const {cls,label}=logisticsLabel(o);
+  return `<span class="pill ${cls}" style="font-size:10px">${label}</span>`;
+}
+
 function pageHqB2bOrders(){
   let filter=window._b2bFilter||'all';
   const shown=filter==='all'?B2B_ORDERS:B2B_ORDERS.filter(o=>o.status===filter);
@@ -2156,6 +2184,7 @@ async function processB2bFEFO(o,confirmedAllocs){
   await ensureDocNumbers(o); // jana No. DO & No. Invois sekali sahaja
   o.items.forEach(i=>{ if(i.received==null) i.received=0; });
   o.status='in_transit';
+  o.logistics={status:'packed',driver:'',assignedAt:'',outAt:'',deliveredAt:'',deliveredBy:''};
   await Promise.all([saveB2BOrders(),saveProducts(),saveBatches()]);
   buildSidebar();
   navTo('hq-b2b-orders');
@@ -3747,7 +3776,7 @@ function pageB2bMyOrders(){
         <td style="font-weight:700">${o.id}</td><td>${o.date}</td>
         <td>${o.items.length} items</td>
         <td style="font-weight:600">${fmtRM(orderTotal(o.items))}</td>
-        <td>${statusPill(o.status)}${o.hasBackorder?` <span class="pill p-pending" style="font-size:10px" title="Contains backordered items">BO</span>`:''}${o.isReship?` <span class="pill p-process" style="font-size:10px" title="Reship of ${o.parentOrderId||''}">Reship</span>`:''}${o.hasOutstanding?` <span class="pill p-pending" style="font-size:10px" title="Some items short-received, pending reship">Partial</span>`:''}</td>
+        <td>${statusPill(o.status)}${o.hasBackorder?` <span class="pill p-pending" style="font-size:10px" title="Contains backordered items">BO</span>`:''}${o.isReship?` <span class="pill p-process" style="font-size:10px" title="Reship of ${o.parentOrderId||''}">Reship</span>`:''}${o.hasOutstanding?` <span class="pill p-pending" style="font-size:10px" title="Some items short-received, pending reship">Partial</span>`:o.wasReshipped?` <span class="pill p-process" style="font-size:10px" title="Balance reshipped separately">Reshipped</span>`:''}</td>
         <td><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-xs" onclick="viewB2bOrder('${o.id}')">View</button>${(o.status==='process'||o.status==='in_transit'||o.status==='done')?`<button class="btn btn-ghost btn-xs" onclick="printDO('${o.id}')" title="Cetak Delivery Order">🖨️ DO</button><button class="btn btn-ghost btn-xs" onclick="printB2bInvoice('${o.id}')" title="Cetak Invois">🖨️ Invois</button>`:''}${(()=>{const rcs=RECEIPTS.filter(r=>r.parentOrderId===(o.parentOrderId||o.id)||r.orderId===o.id);return o.status==='done'&&rcs.length?`<button class="btn btn-ghost btn-xs" onclick="viewReceipt('${rcs[rcs.length-1].id}')" title="View latest receipt">🧾 Receipt</button>`:'';})()}</div></td>
       </tr>`).join(''):`<tr><td colspan="6"><div class="empty-state" style="padding:40px"><div class="empty-icon">📋</div><h4>No orders yet</h4><p>Create your first order!</p></div></td></tr>`}
     </tbody>
@@ -3766,7 +3795,7 @@ function pageB2bIncoming(){
   }
   return head+incoming.map(o=>`
 <div class="card">
-  <div class="card-h"><h3>${o.id}</h3><span style="font-size:12px;color:var(--grey)">Date: ${o.date} · ${statusPill(o.status)}</span></div>
+  <div class="card-h"><h3>${o.id}</h3><span style="font-size:12px;color:var(--grey)">Date: ${o.date} · ${statusPill(o.status)} · ${logisticsPill(o)}</span></div>
   <div class="tbl-wrap"><table>
     <thead><tr><th>Product</th><th>Ordered Qty</th><th>Already Received</th><th>Batch / Expiry (from HQ)</th><th>Receive Now</th></tr></thead>
     <tbody>
@@ -3937,11 +3966,115 @@ async function reshipOutstanding(orderId){
       B2B_ORDERS.push(ship);
       // tanda induk dah selesai reship (buang pending)
       o.reshipPending=false;
+      o.hasOutstanding=false;      // baki dah jadi tanggungjawab reship
+      o.wasReshipped=true;         // tanda order ini pernah di-reship
       // kosongkan outstanding pada induk (dah dipindah ke ship baru)
       o.items.forEach(i=>{ if(i.outstanding){ i.reshippedIn=newId; i.outstanding=0; } });
       await saveB2BOrders();buildSidebar();navTo('hq-b2b-orders');
       toast('✓ Reship '+newId+' created — process it to ship');
     });
+}
+
+// ============================================================
+// LOG-A: LOGISTICS — delivery layer within in_transit
+// Flow: packed → assigned (HQ) → out (driver) → delivered (driver)
+//       → clinic Confirm Receipt (M1-A) → done
+// ============================================================
+function driverList(){
+  return Object.values(ACCOUNTS).filter(a=>a.role==='driver').map(a=>a.name);
+}
+
+// ---- HQ: Logistics ----
+function pageHqLogistics(){
+  const active=B2B_ORDERS.filter(o=>o.status==='in_transit');
+  const head=`<div class="page-head"><h2>🚚 Logistics</h2><p>Manage deliveries from HQ to clinics</p></div>`;
+  const disclaimer=`<div class="card" style="border-left:4px solid var(--orange)"><div class="card-body" style="font-size:12px;color:var(--grey)">⚠️ Delivery workflow follows internal BP SOP. Cold chain temperature values and regulatory parameters must be verified against current NPRA/GDP guidelines before live use.</div></div>`;
+  if(!active.length){
+    return head+disclaimer+`<div class="card"><div class="card-body"><div class="empty-state" style="padding:40px"><div class="empty-icon">🚚</div><h4>No active deliveries</h4><p>Orders shipped to clinics will appear here for driver assignment and tracking.</p></div></div></div>`;
+  }
+  const drivers=driverList();
+  return head+disclaimer+active.map(o=>{
+    const lg=o.logistics||{status:'packed'};
+    const {cls,label}=logisticsLabel(o);
+    const itemCount=o.items.length;
+    let action='';
+    if(lg.status==='packed'||!lg.status){
+      const opts=drivers.length
+        ? drivers.map(d=>`<option value="${d}">${d}</option>`).join('')
+        : `<option value="">No driver accounts</option>`;
+      action=`<select id="drv_${o.id}" style="padding:8px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);margin-right:8px"><option value="">— Select driver —</option>${opts}</select>
+        <button class="btn btn-primary" onclick="assignDriver('${o.id}')">Assign Driver</button>`;
+    }else{
+      action=`<span style="font-size:13px;color:var(--grey)">Driver: <b>${lg.driver||'—'}</b> · <span class="pill ${cls}" style="font-size:10px">${label}</span></span>`;
+    }
+    return `
+<div class="card">
+  <div class="card-h"><h3>${o.id}</h3><span style="font-size:12px;color:var(--grey)">Clinic: ${o.branch} · Items: ${itemCount} · <span class="pill ${cls}" style="font-size:10px">${label}</span></span></div>
+  <div class="card-body" style="border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+    ${action}
+    <button class="btn btn-ghost" onclick="printDO('${o.id}')">Print DO</button>
+  </div>
+</div>`;
+  }).join('');
+}
+
+async function assignDriver(orderId){
+  const o=B2B_ORDERS.find(x=>x.id===orderId);if(!o)return;
+  const sel=document.getElementById('drv_'+orderId);
+  const driver=sel?sel.value:'';
+  if(!driver){toast('❌ Select a driver');return;}
+  o.logistics=o.logistics||{status:'packed'};
+  o.logistics.status='assigned';
+  o.logistics.driver=driver;
+  o.logistics.assignedAt=new Date().toISOString();
+  await saveB2BOrders();buildSidebar();navTo('hq-logistics');
+  toast('✓ Assigned to '+driver);
+}
+
+// ---- Driver: My Deliveries ----
+function pageDriverDeliveries(){
+  const mine=B2B_ORDERS.filter(o=>o.status==='in_transit'&&o.logistics&&o.logistics.driver===SESSION.name);
+  const head=`<div class="page-head"><h2>🛵 My Deliveries</h2><p>Your assigned deliveries</p></div>`;
+  if(!mine.length){
+    return head+`<div class="card"><div class="card-body"><div class="empty-state" style="padding:40px"><div class="empty-icon">🛵</div><h4>No deliveries assigned</h4><p>Deliveries assigned to you by HQ will appear here.</p></div></div></div>`;
+  }
+  return head+mine.map(o=>{
+    const lg=o.logistics||{status:'packed'};
+    const {cls,label}=logisticsLabel(o);
+    let action='';
+    if(lg.status==='assigned'){
+      action=`<button class="btn btn-primary" onclick="driverOut('${o.id}')">Start Delivery (Out)</button>`;
+    }else if(lg.status==='out'){
+      action=`<button class="btn btn-primary" onclick="driverDelivered('${o.id}')">Mark Delivered</button>`;
+    }else if(lg.status==='delivered'){
+      action=`<span style="font-size:13px;color:var(--grey)">Delivered — awaiting clinic confirmation</span>`;
+    }
+    return `
+<div class="card">
+  <div class="card-h"><h3>${o.id}</h3><span style="font-size:12px;color:var(--grey)">Clinic: ${o.branch} · Items: ${o.items.length} · <span class="pill ${cls}" style="font-size:10px">${label}</span></span></div>
+  <div class="card-body" style="border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+    ${action}
+    <button class="btn btn-ghost" onclick="printDO('${o.id}')">Print DO</button>
+  </div>
+</div>`;
+  }).join('');
+}
+
+async function driverOut(orderId){
+  const o=B2B_ORDERS.find(x=>x.id===orderId);if(!o||!o.logistics)return;
+  o.logistics.status='out';o.logistics.outAt=new Date().toISOString();
+  await saveB2BOrders();buildSidebar();navTo('driver-dashboard');
+  toast('✓ Out for delivery');
+}
+async function driverDelivered(orderId){
+  const o=B2B_ORDERS.find(x=>x.id===orderId);if(!o||!o.logistics)return;
+  showConfirm('Mark Delivered','Confirm goods delivered to clinic? Clinic will still confirm receipt.','Yes, Delivered',async()=>{
+    o.logistics.status='delivered';
+    o.logistics.deliveredAt=new Date().toISOString();
+    o.logistics.deliveredBy=SESSION?.name||'';
+    await saveB2BOrders();buildSidebar();navTo('driver-dashboard');
+    toast('✓ Marked delivered — clinic to confirm receipt');
+  });
 }
 
 // ============================================================
